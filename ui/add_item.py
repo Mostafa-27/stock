@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QLineEdit, 
                               QSpinBox, QDoubleSpinBox, QPushButton, QLabel,
                               QMessageBox, QDateEdit, QComboBox)
-from PySide6.QtCore import Qt, QDate
+from PySide6.QtCore import Qt, QDate, Signal
 import sqlite3
 
 from models.item import Item
@@ -9,6 +9,9 @@ from models.invoice import Invoice
 from database import create_connection
 
 class AddItemWidget(QWidget):
+    # Signal to notify when an item is added successfully
+    item_added = Signal(str)  # Signal with invoice number
+    
     def __init__(self):
         super().__init__()
         
@@ -133,6 +136,8 @@ class AddItemWidget(QWidget):
                         conn.close()
             
             QMessageBox.information(self, "Success", "Item added successfully")
+            # Emit signal with invoice number for printing
+            self.item_added.emit(invoice_number)
             self.clear_form()
         else:
             QMessageBox.critical(self, "Error", "Failed to add item")

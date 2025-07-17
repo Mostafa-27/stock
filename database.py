@@ -85,11 +85,47 @@ def create_tables(conn):
                         notes TEXT
                     );"""
     
+    # Create users table
+    users_table = """CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL UNIQUE,
+                    password TEXT NOT NULL,
+                    is_admin INTEGER DEFAULT 0
+                );"""
+    
+    # Create settings table
+    settings_table = """CREATE TABLE IF NOT EXISTS settings (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        setting_name TEXT NOT NULL UNIQUE,
+                        setting_value TEXT,
+                        setting_type TEXT
+                    );"""
+    
     try:
         cursor = conn.cursor()
         cursor.execute(items_table)
         cursor.execute(extractions_table)
         cursor.execute(invoices_table)
+        cursor.execute(users_table)
+        cursor.execute(settings_table)
+        
+        # Check if admin user exists, if not create default admin user
+        cursor.execute("SELECT COUNT(*) FROM users WHERE username = 'admin'")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)", 
+                          ('admin', 'admin', 1))
+        
+        # Initialize default settings if they don't exist
+        default_settings = [
+            ('default_printer', '', 'text'),
+            ('company_logo', '', 'file_path'),
+            ('auto_print', 'true', 'boolean')
+        ]
+        
+        for setting in default_settings:
+            cursor.execute("INSERT OR IGNORE INTO settings (setting_name, setting_value, setting_type) VALUES (?, ?, ?)",
+                          setting)
+        
         conn.commit()
     except Error as e:
         print(e)

@@ -50,7 +50,86 @@ class Invoice:
         try:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM invoices ORDER BY issue_date DESC")
-            return cursor.fetchall()
+            invoices = []
+            for row in cursor.fetchall():
+                invoices.append({
+                    'id': row[0],
+                    'invoice_number': row[1],
+                    'supplier_name': row[2],
+                    'total_amount': row[3],
+                    'payment_status': row[4],
+                    'paid_amount': row[5],
+                    'issue_date': row[6],
+                    'due_date': row[7],
+                    'notes': row[8]
+                })
+            return invoices
+        except sqlite3.Error as e:
+            print(f"Database error: {e}")
+            return []
+        finally:
+            if conn:
+                conn.close()
+    
+    @staticmethod
+    def get_invoice_by_number(invoice_number):
+        """Get an invoice by its invoice number"""
+        conn = create_connection()
+        if conn is None:
+            return None
+        
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM invoices WHERE invoice_number = ?",
+                (invoice_number,)
+            )
+            row = cursor.fetchone()
+            if row:
+                return {
+                    'id': row[0],
+                    'invoice_number': row[1],
+                    'supplier_name': row[2],
+                    'total_amount': row[3],
+                    'payment_status': row[4],
+                    'paid_amount': row[5],
+                    'issue_date': row[6],
+                    'due_date': row[7],
+                    'notes': row[8]
+                }
+            return None
+        except sqlite3.Error as e:
+            print(f"Database error: {e}")
+            return None
+        finally:
+            if conn:
+                conn.close()
+    
+    @staticmethod
+    def get_items_by_invoice(invoice_number):
+        """Get all items for a specific invoice"""
+        conn = create_connection()
+        if conn is None:
+            return []
+        
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM items WHERE invoice_number = ?",
+                (invoice_number,)
+            )
+            items = []
+            for row in cursor.fetchall():
+                items.append({
+                    'id': row[0],
+                    'item_name': row[1],
+                    'quantity': row[2],
+                    'price_per_unit': row[3],
+                    'invoice_number': row[4],
+                    'supplier_name': row[5],
+                    'date_added': row[6]
+                })
+            return items
         except sqlite3.Error as e:
             print(f"Database error: {e}")
             return []
@@ -68,7 +147,20 @@ class Invoice:
         try:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM invoices WHERE supplier_name = ? ORDER BY issue_date DESC", (supplier_name,))
-            return cursor.fetchall()
+            invoices = []
+            for row in cursor.fetchall():
+                invoices.append({
+                    'id': row[0],
+                    'invoice_number': row[1],
+                    'supplier_name': row[2],
+                    'total_amount': row[3],
+                    'payment_status': row[4],
+                    'paid_amount': row[5],
+                    'issue_date': row[6],
+                    'due_date': row[7],
+                    'notes': row[8]
+                })
+            return invoices
         except sqlite3.Error as e:
             print(f"Database error: {e}")
             return []

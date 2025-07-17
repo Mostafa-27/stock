@@ -1,0 +1,188 @@
+import os
+import tempfile
+from datetime import datetime
+import win32print
+import win32con
+from PySide6.QtWidgets import QMessageBox
+from PySide6.QtGui import QPixmap, QPainter
+from PySide6.QtPrintSupport import QPrinter, QPrintDialog
+from PySide6.QtCore import QSize, Qt
+
+from models.settings import Settings
+
+def get_available_printers():
+    """
+    Get a list of available printers on the system
+    Returns: List of printer names
+    """
+    printers = []
+    try:
+        for printer in win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS):
+            printers.append(printer[2])  # printer name is at index 2
+    except Exception as e:
+        print(f"Error getting printers: {e}")
+    return printers
+
+def get_default_printer():
+    """
+    Get the system default printer
+    Returns: Default printer name or None if not found
+    """
+    try:
+        return win32print.GetDefaultPrinter()
+    except Exception as e:
+        print(f"Error getting default printer: {e}")
+        return None
+
+def print_invoice(invoice_data, items_data):
+    """
+    Print an invoice with the given data
+    Returns: True if successful, False otherwise
+    """
+    # Get printer settings
+    printer_name = Settings.get_setting('default_printer')
+    logo_path = Settings.get_setting('company_logo')
+    
+    # Create a printer object
+    printer = QPrinter(QPrinter.HighResolution)
+    
+    # Set the printer name if configured
+    if printer_name:
+        printer.setPrinterName(printer_name)
+    
+    # Create the receipt content
+    receipt_content = generate_receipt_content(invoice_data, items_data, logo_path)
+    
+    # Print the receipt
+    try:
+        painter = QPainter()
+        if painter.begin(printer):
+            # Draw the receipt content
+            painter.drawPixmap(0, 0, receipt_content)
+            painter.end()
+            return True
+        else:
+            QMessageBox.warning(None, "Printing Error", "Could not start printer.")
+            return False
+    except Exception as e:
+        QMessageBox.warning(None, "Printing Error", f"Error printing receipt: {e}")
+        return False
+
+def generate_receipt_content(invoice_data, items_data, logo_path=None):
+    """
+    Generate a QPixmap containing the receipt content
+    Returns: QPixmap with the receipt content
+    """
+    # Create a pixmap to draw on
+    printer = QPrinter(QPrinter.HighResolution)
+    rect = printer.pageRect(QPrinter.Point)
+    pixmap = QPixmap(rect.width(), rect.height())
+    pixmap.fill(Qt.white)
+    
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing)
+    
+    # Start position
+    x, y = 50, 50
+    line_height = 20
+    
+    # Draw logo if available
+    if logo_path and os.path.exists(logo_path):
+        logo = QPixmap(logo_path)
+        if not logo.isNull():
+            logo = logo.scaled(QSize(200, 100), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            painter.drawPixmap(x, y, logo)
+            y += logo.height() + 20
+    
+    # Draw header
+    painter.drawText(x, y, "INVOICE")
+    y += line_height * 2
+    
+    # Draw invoice details
+    painter.drawText(x, y, f"Invoice #: {invoice_data['invoice_number']}")
+    y += line_height
+    painter.drawText(x, y, f"Date: {invoice_data['issue_date']}")
+    y += line_height
+    painter.drawText(x, y, f"Supplier: {invoice_data['supplier_name']}")
+    y += line_height * 2
+    
+    # Draw items header
+    painter.drawText(x, y, "Item")
+    painter.drawText(x + 200, y, "Quantity")
+    painter.drawText(x + 300, y, "Price")
+    painter.drawText(x + 400, y, "Total")
+    y += line_height
+    
+    # Draw separator line
+    painter.drawLine(x, y, x + 500, y)
+    y += line_height
+    
+    # Draw items
+    for item in items_data:
+        painter.drawText(x, y, item['item_name'])
+        painter.drawText(x + 200, y, str(item['quantity']))
+        painter.drawText(x + 300, y, f"${item['price_per_unit']:.2f}")
+        total = item['quantity'] * item['price_per_unit']
+        painter.drawText(x + 400, y, f"${total:.2f}")
+        y += line_height
+    
+    # Draw separator line
+    y += line_height / 2
+    painter.drawLine(x, y, x + 500, y)
+    y += line_height
+    
+    # Draw total
+    painter.drawText(x + 300, y, "Total:")
+    painter.drawText(x + 400, y, f"${invoice_data['total_amount']:.2f}")
+    y += line_height
+    
+    # Draw payment status
+    painter.drawText(x + 300, y, "Status:")
+    painter.drawText(x + 400, y, invoice_data['payment_status'])
+    
+    if invoice_data['payment_status'] == 'Partially Paid':
+        y += line_height
+        painter.drawText(x + 300, y, "Paid:")
+        painter.drawText(x + 400, y, f"${invoice_data['paid_amount']:.2f}")
+        y += line_height
+        remaining = invoice_data['total_amount'] - invoice_data['paid_amount']
+        painter.drawText(x + 300, y, "Remaining:")
+        painter.drawText(x + 400, y, f"${remaining:.2f}")
+    
+    # Draw footer
+    y += line_height * 3
+    painter.drawText(x, y, "Thank you for your business!")
+    y += line_height
+    painter.drawText(x, y, f"Printed on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    painter.end()
+    return pixmap
+
+def show_print_dialog(parent, invoice_data, items_data):
+    """
+    Show a print dialog and print if accepted
+    Returns: True if printed, False otherwise
+    """
+    printer = QPrinter(QPrinter.HighResolution)
+    dialog = QPrintDialog(printer, parent)
+    
+    if dialog.exec() == QPrintDialog.Accepted:
+        # Generate receipt content
+        logo_path = Settings.get_setting('company_logo')
+        receipt_content = generate_receipt_content(invoice_data, items_data, logo_path)
+        
+        # Print the receipt
+        try:
+            painter = QPainter()
+            if painter.begin(printer):
+                painter.drawPixmap(0, 0, receipt_content)
+                painter.end()
+                return True
+            else:
+                QMessageBox.warning(parent, "Printing Error", "Could not start printer.")
+                return False
+        except Exception as e:
+            QMessageBox.warning(parent, "Printing Error", f"Error printing receipt: {e}")
+            return False
+    
+    return False

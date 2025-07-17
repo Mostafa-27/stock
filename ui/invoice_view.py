@@ -68,6 +68,9 @@ class PaymentDialog(QDialog):
         }
 
 class InvoiceViewWidget(QWidget):
+    # Signal to notify when an invoice payment is updated
+    invoice_updated = Signal(str)  # invoice_number
+    
     def __init__(self):
         super().__init__()
         
@@ -157,12 +160,12 @@ class InvoiceViewWidget(QWidget):
             self.invoice_table.insertRow(row_position)
             
             # Extract invoice data
-            invoice_id = invoice[0]
-            invoice_number = invoice[1]
-            total_amount = invoice[3]
-            payment_status = invoice[4]
-            paid_amount = invoice[5]
-            issue_date = invoice[6]
+            invoice_id = invoice['id']
+            invoice_number = invoice['invoice_number']
+            total_amount = invoice['total_amount']
+            payment_status = invoice['payment_status']
+            paid_amount = invoice['paid_amount']
+            issue_date = invoice['issue_date']
             
             # Calculate remaining amount
             remaining = total_amount - paid_amount
@@ -207,6 +210,8 @@ class InvoiceViewWidget(QWidget):
             
             if success:
                 QMessageBox.information(self, "Success", "Payment updated successfully")
+                # Emit signal with invoice number for printing
+                self.invoice_updated.emit(invoice_number)
                 self.load_invoices(self.supplier_combo.currentText())
             else:
                 QMessageBox.critical(self, "Error", "Failed to update payment")

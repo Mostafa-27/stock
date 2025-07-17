@@ -1,12 +1,15 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QLineEdit, 
                               QSpinBox, QPushButton, QLabel, QMessageBox,
                               QComboBox)
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 
 from models.item import Item
 from models.extraction import Extraction
 
 class ExtractItemWidget(QWidget):
+    # Signal to notify when an extraction is completed successfully
+    extraction_completed = Signal(int, str, int)  # item_id, branch_name, quantity
+    
     def __init__(self):
         super().__init__()
         
@@ -103,6 +106,8 @@ class ExtractItemWidget(QWidget):
         
         if success:
             QMessageBox.information(self, "Success", message)
+            # Emit signal with extraction details for printing
+            self.extraction_completed.emit(item_id, branch_name, quantity)
             self.clear_form()
             self.refresh_items()
         else:
