@@ -85,7 +85,7 @@ class PaymentDialog(QDialog):
         self.status_combo = QComboBox()
         self.status_combo.addItem(Invoice.PAYMENT_STATUS['PAID'])
         self.status_combo.addItem(Invoice.PAYMENT_STATUS['PARTIALLY_PAID'])
-        self.status_combo.addItem(Invoice.PAYMENT_STATUS['DELAYED'])
+        # self.status_combo.addItem(Invoice.PAYMENT_STATUS['DELAYED'])
         # Set current status if available
         if self.current_status:
             index = self.status_combo.findText(self.current_status)
@@ -94,13 +94,13 @@ class PaymentDialog(QDialog):
         layout.addWidget(self.status_combo)
         
         # Paid amount field with label
-        amount_label = QLabel("Enter Paid Amount:")
+        amount_label = QLabel("Enter Additional Payment:")
         layout.addWidget(amount_label)
         
         self.paid_amount = QDoubleSpinBox()
         self.paid_amount.setMinimum(0)
-        self.paid_amount.setMaximum(total_amount)
-        self.paid_amount.setValue(current_paid)
+        self.paid_amount.setMaximum(total_amount - current_paid)  # Limit to remaining amount
+        self.paid_amount.setValue(0)  # Start with 0 for additional payment
         self.paid_amount.setDecimals(2)
         self.paid_amount.setSingleStep(0.5)  # Add step value for better usability
         self.paid_amount.setStyleSheet("""
@@ -112,6 +112,13 @@ class PaymentDialog(QDialog):
             }
         """)
         layout.addWidget(self.paid_amount)
+        
+        # Display total payment after this transaction
+        self.total_payment_label = QLabel(f"${current_paid:.2f}")
+        form_layout.addRow("Total Payment After Transaction:", self.total_payment_label)
+        
+        # Connect value changed to update total payment label
+        self.paid_amount.valueChanged.connect(self.update_total_payment_label)
         
         # Warning label for validation
         self.warning_label = QLabel("")
@@ -139,24 +146,37 @@ class PaymentDialog(QDialog):
     
     def on_status_changed(self, status):
         if status == Invoice.PAYMENT_STATUS['PAID']:
-            self.paid_amount.setValue(self.total_amount)
+            # For paid status, set the additional payment to cover the remaining amount
+            remaining = self.total_amount - self.current_paid
+            self.paid_amount.setValue(remaining)
             self.paid_amount.setEnabled(False)
+            self.total_payment_label.setText(f"${self.total_amount:.2f}")
             self.warning_label.setText("")
         elif status == Invoice.PAYMENT_STATUS['DELAYED']:
+            # For delayed status, no additional payment
             self.paid_amount.setValue(0)
             self.paid_amount.setEnabled(False)
+            self.total_payment_label.setText(f"${self.current_paid:.2f}")
             self.warning_label.setText("")
         else:  # Partially paid
             self.paid_amount.setEnabled(True)
+            # Update the validation based on the current additional amount
             self.validate_amount(self.paid_amount.value())
     
-    def validate_amount(self, amount):
+    def update_total_payment_label(self, additional_amount):
+        # Update the total payment label based on current paid + additional amount
+        total_payment = self.current_paid + additional_amount
+        self.total_payment_label.setText(f"${total_payment:.2f}")
+        
+    def validate_amount(self, additional_amount):
+        total_payment = self.current_paid + additional_amount
+        
         if self.status_combo.currentText() == Invoice.PAYMENT_STATUS['PARTIALLY_PAID']:
-            if amount <= 0:
-                self.warning_label.setText("Paid amount must be greater than zero for partially paid status.")
+            if total_payment <= 0:
+                self.warning_label.setText("Total paid amount must be greater than zero for partially paid status.")
                 self.save_button.setEnabled(False)
-            elif amount >= self.total_amount:
-                self.warning_label.setText("For partially paid status, amount should be less than total. Consider using 'Paid' status instead.")
+            elif total_payment >= self.total_amount:
+                self.warning_label.setText("For partially paid status, total amount should be less than invoice total. Consider using 'Paid' status instead.")
                 self.save_button.setEnabled(False)
             else:
                 self.warning_label.setText("")
@@ -165,27 +185,39 @@ class PaymentDialog(QDialog):
     def validate_and_accept(self):
         # Final validation before accepting
         status = self.status_combo.currentText()
-        amount = self.paid_amount.value()
+        additional_amount = self.paid_amount.value()
+        total_payment = self.current_paid + additional_amount
         
         if status == Invoice.PAYMENT_STATUS['PARTIALLY_PAID']:
-            if amount <= 0:
-                self.warning_label.setText("Paid amount must be greater than zero for partially paid status.")
+            if total_payment <= 0:
+                self.warning_label.setText("Total paid amount must be greater than zero for partially paid status.")
                 return
-            elif amount >= self.total_amount:
-                self.warning_label.setText("For partially paid status, amount should be less than total. Consider using 'Paid' status instead.")
+            elif total_payment >= self.total_amount:
+                self.warning_label.setText("For partially paid status, total amount should be less than invoice total. Consider using 'Paid' status instead.")
                 return
-        elif status == Invoice.PAYMENT_STATUS['PAID'] and amount != self.total_amount:
+        elif status == Invoice.PAYMENT_STATUS['PAID']:
             # Force correct amount for PAID status
-            self.paid_amount.setValue(self.total_amount)
-            amount = self.total_amount  # Update amount for consistency
+            total_payment = self.total_amount
         
         # All validations passed
         self.accept()
     
     def get_payment_data(self):
+        status = self.status_combo.currentText()
+        additional_amount = self.paid_amount.value()
+        
+        # Calculate total payment based on current paid + additional amount
+        if status == Invoice.PAYMENT_STATUS['PAID']:
+            total_payment = self.total_amount
+        elif status == Invoice.PAYMENT_STATUS['DELAYED']:
+            # For delayed status, we keep the current paid amount
+            total_payment = self.current_paid
+        else:  # Partially paid
+            total_payment = self.current_paid + additional_amount
+        
         return {
-            'status': self.status_combo.currentText(),
-            'paid_amount': self.paid_amount.value()
+            'status': status,
+            'paid_amount': total_payment
         }
 
 class InvoiceViewWidget(QWidget):

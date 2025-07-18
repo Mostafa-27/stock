@@ -183,6 +183,23 @@ class Invoice:
                 return False
             
             if paid_amount is not None:
+                # Get current invoice data to check existing paid amount and total amount
+                cursor.execute("SELECT paid_amount, total_amount FROM invoices WHERE id = ?", (invoice_id,))
+                row = cursor.fetchone()
+                if not row:
+                    return False
+                
+                current_paid, total_amount = row
+                
+                # If new paid amount is less than current, keep the current amount
+                # This prevents decreasing the already paid amount
+                if paid_amount < current_paid:
+                    paid_amount = current_paid
+                
+                # Ensure paid amount doesn't exceed total amount
+                if paid_amount > total_amount:
+                    paid_amount = total_amount
+                
                 sql = "UPDATE invoices SET payment_status = ?, paid_amount = ? WHERE id = ?"
                 cursor.execute(sql, (payment_status, paid_amount, invoice_id))
             else:
