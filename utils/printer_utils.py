@@ -68,10 +68,16 @@ def print_invoice(invoice_data, items_data):
         QMessageBox.warning(None, "Printing Error", f"Error printing receipt: {e}")
         return False
 
-def generate_receipt_content(invoice_data, items_data, logo_path=None):
+def generate_receipt_content(invoice_data, items_data, logo_path=None, is_history=False):
     """
     Generate a QPixmap containing the receipt content
     Returns: QPixmap with the receipt content
+    
+    Parameters:
+    - invoice_data: Dictionary with invoice details
+    - items_data: List of dictionaries with item details
+    - logo_path: Path to company logo image
+    - is_history: Boolean indicating if this is a history report
     """
     # Create a pixmap to draw on
     printer = QPrinter(QPrinter.HighResolution)
@@ -81,6 +87,18 @@ def generate_receipt_content(invoice_data, items_data, logo_path=None):
     
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.Antialiasing)
+    
+    # Set fonts
+    title_font = painter.font()
+    title_font.setPointSize(16)
+    title_font.setBold(True)
+    
+    header_font = painter.font()
+    header_font.setPointSize(12)
+    header_font.setBold(True)
+    
+    normal_font = painter.font()
+    normal_font.setPointSize(10)
     
     # Start position
     x, y = 50, 50
@@ -95,81 +113,141 @@ def generate_receipt_content(invoice_data, items_data, logo_path=None):
             y += logo.height() + 20
     
     # Draw header
-    painter.drawText(x, y, "INVOICE")
+    painter.setFont(title_font)
+    if is_history:
+        painter.drawText(x, y, "HISTORY OPERATIONS REPORT")
+    else:
+        painter.drawText(x, y, "INVOICE")
     y += line_height * 2
     
-    # Draw invoice details
-    painter.drawText(x, y, f"Invoice #: {invoice_data['invoice_number']}")
+    # Reset to normal font
+    painter.setFont(normal_font)
+    
+    # Draw document details
+    painter.drawText(x, y, f"Reference #: {invoice_data['invoice_number']}")
     y += line_height
     painter.drawText(x, y, f"Date: {invoice_data['issue_date']}")
     y += line_height
-    painter.drawText(x, y, f"Supplier: {invoice_data['supplier_name']}")
-    y += line_height * 2
+    
+    if is_history:
+        painter.drawText(x, y, f"Report Type: {invoice_data['supplier_name']}")
+    else:
+        painter.drawText(x, y, f"Supplier: {invoice_data['supplier_name']}")
+    y += line_height
+    
+    # Add notes if available
+    if 'notes' in invoice_data and invoice_data['notes']:
+        painter.drawText(x, y, f"Notes: {invoice_data['notes']}")
+        y += line_height
+    
+    y += line_height
     
     # Draw items header
-    painter.drawText(x, y, "Item")
-    painter.drawText(x + 200, y, "Quantity")
-    painter.drawText(x + 300, y, "Price")
-    painter.drawText(x + 400, y, "Total")
+    painter.setFont(header_font)
+    if is_history:
+        painter.drawText(x, y, "Item/Operation")
+        painter.drawText(x + 250, y, "Quantity")
+        painter.drawText(x + 350, y, "Date")
+        painter.drawText(x + 450, y, "User/Details")
+    else:
+        painter.drawText(x, y, "Item")
+        painter.drawText(x + 200, y, "Quantity")
+        painter.drawText(x + 300, y, "Price")
+        painter.drawText(x + 400, y, "Total")
     y += line_height
     
     # Draw separator line
-    painter.drawLine(x, y, x + 500, y)
+    painter.drawLine(x, y, x + 550, y)
     y += line_height
+    
+    # Reset to normal font
+    painter.setFont(normal_font)
     
     # Draw items
     for item in items_data:
-        painter.drawText(x, y, item['item_name'])
-        painter.drawText(x + 200, y, str(item['quantity']))
-        painter.drawText(x + 300, y, f"${item['price_per_unit']:.2f}")
-        total = item['quantity'] * item['price_per_unit']
-        painter.drawText(x + 400, y, f"${total:.2f}")
+        if is_history:
+            # For history report
+            painter.drawText(x, y, item['item_name'])
+            painter.drawText(x + 250, y, str(item['quantity']))
+            painter.drawText(x + 350, y, item['date_added'])
+            painter.drawText(x + 450, y, item['supplier_name'])  # Using supplier_name field for user/details
+        else:
+            # For regular invoice
+            painter.drawText(x, y, item['item_name'])
+            painter.drawText(x + 200, y, str(item['quantity']))
+            painter.drawText(x + 300, y, f"${item['price_per_unit']:.2f}")
+            total = item['quantity'] * item['price_per_unit']
+            painter.drawText(x + 400, y, f"${total:.2f}")
         y += line_height
+        
+        # Check if we need to start a new page (simple pagination)
+        if y > rect.height() - 100:
+            # Add page number
+            painter.drawText(rect.width() - 100, rect.height() - 20, "Page 1")
+            # TODO: Implement proper multi-page support if needed
     
     # Draw separator line
     y += line_height / 2
-    painter.drawLine(x, y, x + 500, y)
+    painter.drawLine(x, y, x + 550, y)
     y += line_height
     
-    # Draw total
-    painter.drawText(x + 300, y, "Total:")
-    painter.drawText(x + 400, y, f"${invoice_data['total_amount']:.2f}")
-    y += line_height
-    
-    # Draw payment status
-    painter.drawText(x + 300, y, "Status:")
-    painter.drawText(x + 400, y, invoice_data['payment_status'])
-    
-    if invoice_data['payment_status'] == 'Partially Paid':
+    # Only show financial details for invoices, not history reports
+    if not is_history:
+        # Draw total
+        painter.drawText(x + 300, y, "Total:")
+        painter.drawText(x + 400, y, f"${invoice_data['total_amount']:.2f}")
         y += line_height
-        painter.drawText(x + 300, y, "Paid:")
-        painter.drawText(x + 400, y, f"${invoice_data['paid_amount']:.2f}")
-        y += line_height
-        remaining = invoice_data['total_amount'] - invoice_data['paid_amount']
-        painter.drawText(x + 300, y, "Remaining:")
-        painter.drawText(x + 400, y, f"${remaining:.2f}")
+        
+        # Draw payment status
+        painter.drawText(x + 300, y, "Status:")
+        painter.drawText(x + 400, y, invoice_data['payment_status'])
+        
+        if invoice_data['payment_status'] == 'Partially Paid':
+            y += line_height
+            painter.drawText(x + 300, y, "Paid:")
+            painter.drawText(x + 400, y, f"${invoice_data['paid_amount']:.2f}")
+            y += line_height
+            remaining = invoice_data['total_amount'] - invoice_data['paid_amount']
+            painter.drawText(x + 300, y, "Remaining:")
+            painter.drawText(x + 400, y, f"${remaining:.2f}")
     
     # Draw footer
     y += line_height * 3
-    painter.drawText(x, y, "Thank you for your business!")
+    if is_history:
+        painter.drawText(x, y, "End of History Report")
+    else:
+        painter.drawText(x, y, "Thank you for your business!")
     y += line_height
     painter.drawText(x, y, f"Printed on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     painter.end()
     return pixmap
 
-def show_print_dialog(parent, invoice_data, items_data):
+def show_print_dialog(parent, invoice_data, items_data, is_history=False):
     """
     Show a print dialog and print if accepted
+    
+    Parameters:
+    - parent: Parent widget for the dialog
+    - invoice_data: Dictionary with invoice details
+    - items_data: List of dictionaries with item details
+    - is_history: Boolean indicating if this is a history report
+    
     Returns: True if printed, False otherwise
     """
     printer = QPrinter(QPrinter.HighResolution)
     dialog = QPrintDialog(printer, parent)
     
+    # Set the document name for the print job
+    if is_history:
+        printer.setDocName("History Operations Report")
+    else:
+        printer.setDocName(f"Invoice {invoice_data['invoice_number']}")
+    
     if dialog.exec() == QPrintDialog.Accepted:
         # Generate receipt content
         logo_path = Settings.get_setting('company_logo')
-        receipt_content = generate_receipt_content(invoice_data, items_data, logo_path)
+        receipt_content = generate_receipt_content(invoice_data, items_data, logo_path, is_history)
         
         # Print the receipt
         try:
@@ -182,7 +260,7 @@ def show_print_dialog(parent, invoice_data, items_data):
                 QMessageBox.warning(parent, "Printing Error", "Could not start printer.")
                 return False
         except Exception as e:
-            QMessageBox.warning(parent, "Printing Error", f"Error printing receipt: {e}")
+            QMessageBox.warning(parent, "Printing Error", f"Error printing document: {e}")
             return False
     
     return False

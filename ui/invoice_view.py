@@ -1,52 +1,138 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
+from PySide6.QtWidgets import (QFrame, QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
                               QComboBox, QPushButton, QLabel, QHeaderView, QMessageBox,
                               QDoubleSpinBox, QDialog, QFormLayout, QDialogButtonBox)
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 
 from models.invoice import Invoice
+from utils.printer_utils import print_invoice as print_invoice_util
 
 class PaymentDialog(QDialog):
-    def __init__(self, invoice_id, invoice_number, total_amount, current_paid=0, parent=None):
+    def __init__(self, invoice_id, invoice_number, total_amount, current_paid=0, current_status="", parent=None):
         super().__init__(parent)
         self.invoice_id = invoice_id
         self.total_amount = total_amount
+        self.current_paid = current_paid
+        self.current_status = current_status
         
         self.setWindowTitle(f"Update Payment - Invoice #{invoice_number}")
+        self.setStyleSheet("""
+            QDialog {
+                background-color: white;
+            }
+            QLabel {
+                font-size: 12px;
+            }
+            QLabel#totalLabel, QLabel#statusLabel {
+                font-weight: bold;
+                font-size: 14px;
+            }
+            QLabel#warningLabel {
+                color: #e74c3c;
+                font-weight: bold;
+            }
+            QLabel#paidLabel {
+                color: #27ae60;
+                font-weight: bold;
+            }
+        """)
+        
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # Check if invoice is already paid
+        if current_status == Invoice.PAYMENT_STATUS['PAID']:
+            # Show message that invoice is already paid
+            paid_label = QLabel("This invoice is already fully paid and cannot be edited.")
+            paid_label.setObjectName("paidLabel")
+            layout.addWidget(paid_label)
+            
+            # Add close button
+            close_button = QPushButton("Close")
+            close_button.clicked.connect(self.reject)
+            layout.addWidget(close_button)
+            return
         
         form_layout = QFormLayout()
+        form_layout.setSpacing(10)
         
         # Display total amount
         self.total_label = QLabel(f"${total_amount:.2f}")
+        self.total_label.setObjectName("totalLabel")
         form_layout.addRow("Total Amount:", self.total_label)
         
+        # Display current paid amount
+        current_paid_label = QLabel(f"${current_paid:.2f}")
+        form_layout.addRow("Currently Paid:", current_paid_label)
+        
+        # Display remaining amount
+        remaining_label = QLabel(f"${(total_amount - current_paid):.2f}")
+        form_layout.addRow("Remaining Amount:", remaining_label)
+        
+        # Add separator
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        layout.addLayout(form_layout)
+        layout.addWidget(separator)
+        
         # Payment status selection
+        status_label = QLabel("Select Payment Status:")
+        status_label.setObjectName("statusLabel")
+        layout.addWidget(status_label)
+        
         self.status_combo = QComboBox()
         self.status_combo.addItem(Invoice.PAYMENT_STATUS['PAID'])
         self.status_combo.addItem(Invoice.PAYMENT_STATUS['PARTIALLY_PAID'])
         self.status_combo.addItem(Invoice.PAYMENT_STATUS['DELAYED'])
-        form_layout.addRow("Payment Status:", self.status_combo)
+        # Set current status if available
+        if self.current_status:
+            index = self.status_combo.findText(self.current_status)
+            if index >= 0:
+                self.status_combo.setCurrentIndex(index)
+        layout.addWidget(self.status_combo)
         
-        # Paid amount field
+        # Paid amount field with label
+        amount_label = QLabel("Enter Paid Amount:")
+        layout.addWidget(amount_label)
+        
         self.paid_amount = QDoubleSpinBox()
         self.paid_amount.setMinimum(0)
         self.paid_amount.setMaximum(total_amount)
         self.paid_amount.setValue(current_paid)
         self.paid_amount.setDecimals(2)
-        form_layout.addRow("Paid Amount:", self.paid_amount)
+        self.paid_amount.setSingleStep(0.5)  # Add step value for better usability
+        self.paid_amount.setStyleSheet("""
+            QDoubleSpinBox {
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+        """)
+        layout.addWidget(self.paid_amount)
+        
+        # Warning label for validation
+        self.warning_label = QLabel("")
+        self.warning_label.setObjectName("warningLabel")
+        self.warning_label.setWordWrap(True)
+        layout.addWidget(self.warning_label)
         
         # Connect signals
         self.status_combo.currentTextChanged.connect(self.on_status_changed)
-        
-        # Add form to layout
-        layout.addLayout(form_layout)
+        self.paid_amount.valueChanged.connect(self.validate_amount)
         
         # Add buttons
-        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.button_box.accepted.connect(self.accept)
-        self.button_box.rejected.connect(self.reject)
-        layout.addWidget(self.button_box)
+        button_layout = QHBoxLayout()
+        self.save_button = QPushButton("Save")
+        self.save_button.clicked.connect(self.validate_and_accept)
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(self.reject)
+        
+        button_layout.addWidget(cancel_button)
+        button_layout.addWidget(self.save_button)
+        layout.addLayout(button_layout)
         
         # Initialize UI state
         self.on_status_changed(self.status_combo.currentText())
@@ -55,11 +141,46 @@ class PaymentDialog(QDialog):
         if status == Invoice.PAYMENT_STATUS['PAID']:
             self.paid_amount.setValue(self.total_amount)
             self.paid_amount.setEnabled(False)
+            self.warning_label.setText("")
         elif status == Invoice.PAYMENT_STATUS['DELAYED']:
             self.paid_amount.setValue(0)
             self.paid_amount.setEnabled(False)
+            self.warning_label.setText("")
         else:  # Partially paid
             self.paid_amount.setEnabled(True)
+            self.validate_amount(self.paid_amount.value())
+    
+    def validate_amount(self, amount):
+        if self.status_combo.currentText() == Invoice.PAYMENT_STATUS['PARTIALLY_PAID']:
+            if amount <= 0:
+                self.warning_label.setText("Paid amount must be greater than zero for partially paid status.")
+                self.save_button.setEnabled(False)
+            elif amount >= self.total_amount:
+                self.warning_label.setText("For partially paid status, amount should be less than total. Consider using 'Paid' status instead.")
+                self.save_button.setEnabled(False)
+            else:
+                self.warning_label.setText("")
+                self.save_button.setEnabled(True)
+    
+    def validate_and_accept(self):
+        # Final validation before accepting
+        status = self.status_combo.currentText()
+        amount = self.paid_amount.value()
+        
+        if status == Invoice.PAYMENT_STATUS['PARTIALLY_PAID']:
+            if amount <= 0:
+                self.warning_label.setText("Paid amount must be greater than zero for partially paid status.")
+                return
+            elif amount >= self.total_amount:
+                self.warning_label.setText("For partially paid status, amount should be less than total. Consider using 'Paid' status instead.")
+                return
+        elif status == Invoice.PAYMENT_STATUS['PAID'] and amount != self.total_amount:
+            # Force correct amount for PAID status
+            self.paid_amount.setValue(self.total_amount)
+            amount = self.total_amount  # Update amount for consistency
+        
+        # All validations passed
+        self.accept()
     
     def get_payment_data(self):
         return {
@@ -188,16 +309,91 @@ class InvoiceViewWidget(QWidget):
             self.invoice_table.setItem(row_position, 4, status_item)
             self.invoice_table.setItem(row_position, 5, QTableWidgetItem(issue_date))
             
-            # Add update payment button
-            update_button = QPushButton("Update Payment")
-            update_button.clicked.connect(lambda checked=False, id=invoice_id, num=invoice_number, 
-                                         total=total_amount, paid=paid_amount: 
-                                         self.update_payment(id, num, total, paid))
+            # Create a widget to hold both buttons
+            buttons_widget = QWidget()
+            buttons_layout = QHBoxLayout(buttons_widget)
+            buttons_layout.setContentsMargins(0, 0, 0, 0)
             
-            self.invoice_table.setCellWidget(row_position, 6, update_button)
+            # Add update payment button with styling based on payment status
+            update_button = QPushButton("Update Payment")
+            
+            # Style the update button based on payment status
+            if payment_status == Invoice.PAYMENT_STATUS['PAID']:
+                update_button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #27ae60;
+                        color: white;
+                        border: none;
+                        padding: 6px;
+                        border-radius: 4px;
+                    }
+                    QPushButton:hover {
+                        background-color: #2ecc71;
+                    }
+                """)
+            elif payment_status == Invoice.PAYMENT_STATUS['DELAYED']:
+                update_button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #e74c3c;
+                        color: white;
+                        border: none;
+                        padding: 6px;
+                        border-radius: 4px;
+                    }
+                    QPushButton:hover {
+                        background-color: #c0392b;
+                    }
+                """)
+            else:  # Partially paid
+                update_button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #f39c12;
+                        color: white;
+                        border: none;
+                        padding: 6px;
+                        border-radius: 4px;
+                    }
+                    QPushButton:hover {
+                        background-color: #d35400;
+                    }
+                """)
+            
+            update_button.clicked.connect(lambda checked=False, id=invoice_id, num=invoice_number, 
+                                         total=total_amount, paid=paid_amount, status=payment_status: 
+                                         self.update_payment(id, num, total, paid, status))
+            
+            # Add print button with styling
+            print_button = QPushButton("🖨️ Print")
+            print_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #3498db;
+                    color: white;
+                    border: none;
+                    padding: 6px;
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #2980b9;
+                }
+            """)
+            print_button.clicked.connect(lambda checked=False, num=invoice_number: self.print_invoice(num))
+            
+            buttons_layout.addWidget(update_button)
+            buttons_layout.addWidget(print_button)
+            
+            self.invoice_table.setCellWidget(row_position, 6, buttons_widget)
     
-    def update_payment(self, invoice_id, invoice_number, total_amount, current_paid):
-        dialog = PaymentDialog(invoice_id, invoice_number, total_amount, current_paid, self)
+    def update_payment(self, invoice_id, invoice_number, total_amount, current_paid, payment_status=None):
+        # Get current payment status if not provided
+        if payment_status is None:
+            invoice_data = Invoice.get_invoice_by_number(invoice_number)
+            if invoice_data:
+                payment_status = invoice_data['payment_status']
+            else:
+                payment_status = ""
+        
+        # Create and show payment dialog
+        dialog = PaymentDialog(invoice_id, invoice_number, total_amount, current_paid, payment_status, self)
         if dialog.exec_() == QDialog.Accepted:
             payment_data = dialog.get_payment_data()
             
@@ -215,3 +411,23 @@ class InvoiceViewWidget(QWidget):
                 self.load_invoices(self.supplier_combo.currentText())
             else:
                 QMessageBox.critical(self, "Error", "Failed to update payment")
+        else:
+            # Dialog was cancelled or closed
+            pass
+    
+    def print_invoice(self, invoice_number):
+        """Print the selected invoice"""
+        try:
+            # Get invoice data
+            invoice_data = Invoice.get_invoice_by_number(invoice_number)
+            if invoice_data:
+                # Get items for this invoice
+                items_data = Invoice.get_items_by_invoice(invoice_number)
+                
+                # Print the invoice
+                print_invoice_util(invoice_data, items_data)
+                QMessageBox.information(self, "Success", "Invoice sent to printer")
+            else:
+                QMessageBox.warning(self, "Error", "Invoice not found")
+        except Exception as e:
+            QMessageBox.critical(self, "Printing Error", f"Error printing invoice: {e}")
