@@ -202,12 +202,12 @@ class MainWindow(QMainWindow):
         
         # Add tabs with Arabic text
         # self.tab_widget.addTab(self.pizza_main_widget, "الطولات")  # Tables
-        self.tab_widget.addTab(self.invoice_view_widget, "قائمة الطعام")  # Food Menu
-        self.tab_widget.addTab(self.stock_view_widget, "تقارير")  # Reports
-        self.tab_widget.addTab(self.extract_item_widget, "إضافة منتجات")  # Add Products
+        self.tab_widget.addTab(self.invoice_view_widget, "الفواتير")  # Food Menu
+        self.tab_widget.addTab(self.stock_view_widget, "المخزون")  # Reports
+        self.tab_widget.addTab(self.extract_item_widget, "تصدير منتجات")  # Add Products
         self.tab_widget.addTab(self.suppliers_widget, "الموردين")  # Suppliers
-        self.tab_widget.addTab(self.add_item_widget, "الإعدادات")  # Settings
-        self.tab_widget.addTab(self.settings_widget, "تسجيل الخروج")  # Logout
+        self.tab_widget.addTab(self.add_item_widget, "إضافة منتجات")  # Settings
+        self.tab_widget.addTab(self.settings_widget, "إعدادات")  # Logout
         
         # Add tab widget to main layout
         main_layout.addWidget(self.tab_widget)

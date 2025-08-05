@@ -165,11 +165,11 @@ class PaymentDialog(QDialog):
     
     def update_total_payment_label(self, additional_amount):
         # Update the total payment label based on current paid + additional amount
-        total_payment = self.current_paid + additional_amount
+        total_payment = float(self.current_paid) + additional_amount
         self.total_payment_label.setText(f"${total_payment:.2f}")
         
     def validate_amount(self, additional_amount):
-        total_payment = self.current_paid + additional_amount
+        total_payment = float(self.current_paid) + additional_amount
         
         if self.status_combo.currentText() == Invoice.PAYMENT_STATUS['PARTIALLY_PAID']:
             if total_payment <= 0:
@@ -186,7 +186,7 @@ class PaymentDialog(QDialog):
         # Final validation before accepting
         status = self.status_combo.currentText()
         additional_amount = self.paid_amount.value()
-        total_payment = self.current_paid + additional_amount
+        total_payment = float(self.current_paid) + additional_amount
         
         if status == Invoice.PAYMENT_STATUS['PARTIALLY_PAID']:
             if total_payment <= 0:
@@ -213,7 +213,7 @@ class PaymentDialog(QDialog):
             # For delayed status, we keep the current paid amount
             total_payment = self.current_paid
         else:  # Partially paid
-            total_payment = self.current_paid + additional_amount
+            total_payment = float(self.current_paid) + additional_amount
         
         return {
             'status': status,
@@ -339,7 +339,7 @@ class InvoiceViewWidget(QWidget):
                 status_item.setBackground(QColor(255, 255, 200))  # Light yellow
             
             self.invoice_table.setItem(row_position, 4, status_item)
-            self.invoice_table.setItem(row_position, 5, QTableWidgetItem(issue_date))
+            self.invoice_table.setItem(row_position, 5, QTableWidgetItem(str(issue_date)))
             
             # Create a widget to hold both buttons
             buttons_widget = QWidget()
