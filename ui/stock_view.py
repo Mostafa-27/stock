@@ -120,4 +120,4 @@ class StockViewWidget(QWidget):
             self.table.setItem(row, 2, QTableWidgetItem(str(item.quantity)))
             self.table.setItem(row, 3, QTableWidgetItem(f"${item.price_per_unit:.2f}"))
             self.table.setItem(row, 4, QTableWidgetItem(item.invoice_number))
-            self.table.setItem(row, 5, QTableWidgetItem(item.date_added))
+            self.table.setItem(row, 5, QTableWidgetItem(str(item.date_added) if item.date_added else ""))

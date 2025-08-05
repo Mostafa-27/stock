@@ -1,5 +1,5 @@
-import sqlite3
-from database import create_connection
+import pyodbc
+from database import get_db_connection
 
 class Settings:
     @staticmethod
@@ -8,11 +8,8 @@ class Settings:
         Get a setting value from the database
         Returns: The setting value or default_value if not found
         """
-        conn = create_connection()
-        if conn is None:
-            return default_value
-        
         try:
+            conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT setting_value, setting_type FROM settings WHERE setting_name = ?", 
@@ -33,7 +30,7 @@ class Settings:
                     return value
             else:
                 return default_value
-        except sqlite3.Error as e:
+        except pyodbc.Error as e:
             print(f"Database error while getting setting: {e}")
             return default_value
         finally:
@@ -45,29 +42,35 @@ class Settings:
         Update a setting in the database
         Returns: True if successful, False otherwise
         """
-        conn = create_connection()
-        if conn is None:
-            return False
-        
-        # Convert value to string for storage
-        if isinstance(setting_value, bool):
-            str_value = 'true' if setting_value else 'false'
-        else:
-            str_value = str(setting_value)
-        
         try:
+            conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute(
-                "INSERT OR REPLACE INTO settings (setting_name, setting_value, setting_type) VALUES (?, ?, ?)",
-                (setting_name, str_value, setting_type)
-            )
+            
+            # Convert value to string for storage
+            if isinstance(setting_value, bool):
+                str_value = 'true' if setting_value else 'false'
+            else:
+                str_value = str(setting_value)
+            # Use MERGE for SQL Server equivalent of INSERT OR REPLACE
+            merge_sql = """
+            MERGE settings AS target
+            USING (SELECT ? AS setting_name, ? AS setting_value, ? AS setting_type) AS source
+            ON target.setting_name = source.setting_name
+            WHEN MATCHED THEN
+                UPDATE SET setting_value = source.setting_value, setting_type = source.setting_type
+            WHEN NOT MATCHED THEN
+                INSERT (setting_name, setting_value, setting_type)
+                VALUES (source.setting_name, source.setting_value, source.setting_type);
+            """
+            cursor.execute(merge_sql, (setting_name, str_value, setting_type))
             conn.commit()
             return True
-        except sqlite3.Error as e:
+        except pyodbc.Error as e:
             print(f"Database error while updating setting: {e}")
             return False
         finally:
-            conn.close()
+            if 'conn' in locals():
+                conn.close()
     
     @staticmethod
     def get_all_settings():
@@ -75,11 +78,8 @@ class Settings:
         Get all settings from the database
         Returns: Dictionary of settings or empty dict on error
         """
-        conn = create_connection()
-        if conn is None:
-            return {}
-        
         try:
+            conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT setting_name, setting_value, setting_type FROM settings")
             settings = {}
@@ -95,8 +95,9 @@ class Settings:
                 else:  # text or file_path
                     settings[name] = value
             return settings
-        except sqlite3.Error as e:
+        except pyodbc.Error as e:
             print(f"Database error while getting all settings: {e}")
             return {}
         finally:
-            conn.close()
+            if 'conn' in locals():
+                conn.close()

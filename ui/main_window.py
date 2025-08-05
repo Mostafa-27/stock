@@ -2,10 +2,11 @@ from PySide6.QtWidgets import (QHeaderView, QMainWindow, QTableWidget, QTableWid
                               QPushButton, QHBoxLayout, QStackedWidget,
                               QMessageBox, QToolBar, QDialog, QLabel,
                               QComboBox, QSplitter, QListWidget, QListWidgetItem,
-                              QFrame, QApplication)
+                              QFrame, QApplication, QTabWidget)
 from PySide6.QtCore import Qt, QSize, Signal
-from PySide6.QtGui import QIcon, QAction, QColor, QPalette, QFont
+from PySide6.QtGui import QIcon, QAction, QColor, QPalette, QFont, QPixmap
 import datetime
+import pyodbc
 
 from ui.add_item import AddItemWidget
 from ui.extract_item import ExtractItemWidget
@@ -13,10 +14,11 @@ from ui.stock_view import StockViewWidget
 from ui.invoice_view import InvoiceViewWidget
 from models.extraction import Extraction
 from ui.settings import SettingsWidget
+from ui.pizza_main import PizzaMainWidget
 from models.settings import Settings
 from utils.printer_utils import print_invoice, show_print_dialog
 from models.invoice import Invoice
-from database import create_connection
+from database import get_db_connection
 
 class MainWindow(QMainWindow):
     def __init__(self, user_data=None):
@@ -25,8 +27,9 @@ class MainWindow(QMainWindow):
         # Store user data
         self.user_data = user_data or {'id': 0, 'username': 'guest', 'is_admin': False}
         
-        self.setWindowTitle(f"Stock Management System - {self.user_data['username']}")
-        self.setMinimumSize(900, 700)
+        self.setWindowTitle(f"Pizza Melano - {self.user_data['username']}")
+        self.setMinimumSize(1200, 800)
+        self.setWindowFlags(Qt.FramelessWindowHint)
         
         # Apply modern styling to the application
         self.apply_modern_style()
@@ -34,101 +37,151 @@ class MainWindow(QMainWindow):
         # Create central widget and layout
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        main_layout = QHBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins for a cleaner look
-        main_layout.setSpacing(0)  # Remove spacing between sidebar and content
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        
+        # Create custom title bar
+        self.create_title_bar(main_layout)
         
         # Create toolbar
         self.create_toolbar()
         
-        # Create sidebar container with border and enhanced styling
-        sidebar_container = QFrame()
-        sidebar_container.setObjectName("sidebarContainer")
-        sidebar_container.setStyleSheet("""
-            #sidebarContainer {
-                background-color: #2c3e50;
-                border-right: 1px solid #34495e;
-                box-shadow: 2px 0px 5px rgba(0, 0, 0, 0.1);
+        # Create header bar
+        header_bar = QFrame()
+        header_bar.setFixedHeight(100)  # Increased height from 60 to 100
+        header_bar.setStyleSheet("""
+            QFrame {
+                background-color: #663399;
+                border-bottom: 3px solid #552288;
             }
         """)
-        sidebar_layout = QVBoxLayout(sidebar_container)
-        sidebar_layout.setContentsMargins(0, 0, 0, 0)
-        sidebar_layout.setSpacing(0)
+        header_layout = QHBoxLayout(header_bar)
+        header_layout.setContentsMargins(30, 15, 30, 15)  # Increased margins
         
-        # Create sidebar with enhanced styling
-        self.sidebar = QListWidget()
-        self.sidebar.setMaximumWidth(220)
-        self.sidebar.setMinimumWidth(200)
-        self.sidebar.setFrameShape(QFrame.NoFrame)  # Remove border
-        self.sidebar.setStyleSheet("""
-            QListWidget {
-                background-color: #2c3e50;
+        # User info section with logout button
+        user_section = QFrame()
+        user_section_layout = QVBoxLayout(user_section)
+        user_section_layout.setContentsMargins(0, 0, 0, 0)
+        user_section_layout.setSpacing(5)
+        
+        user_info = QLabel(f"مستخدم: {self.user_data['username']}")
+        user_info.setStyleSheet("""
+            QLabel {
+                color: white;
+                font-size: 16px;
+                font-weight: bold;
+                background: transparent;
+            }
+        """)
+        
+        # Logout button
+        self.logout_btn = QPushButton("تسجيل الخروج")
+        self.logout_btn.setFixedSize(100, 25)
+        self.logout_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
                 border: none;
-                outline: none;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: bold;
                 padding: 5px;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            }
+            QPushButton:pressed {
+                background-color: #a93226;
+            }
+        """)
+        self.logout_btn.clicked.connect(self.logout)
+        
+        user_section_layout.addWidget(user_info)
+        user_section_layout.addWidget(self.logout_btn)
+        
+        # Current date and time
+        current_date = QLabel("2025-08-05")
+        current_time = QLabel("12:51:44 PM")
+        invoice_label = QLabel("August-00004 :الفاتورة الحالي")
+        
+        for label in [current_date, current_time, invoice_label]:
+            label.setStyleSheet("""
+                QLabel {
+                    color: white;
+                    font-size: 16px;  /* Increased font size */
+                    font-weight: bold;
+                    background: transparent;
+                }
+            """)
+        
+        header_layout.addWidget(user_section)
+        header_layout.addWidget(current_date)
+        header_layout.addWidget(current_time)
+        header_layout.addStretch()
+        header_layout.addWidget(invoice_label)
+        
+        # Pizza Melano logo with actual image on the right
+        logo_label = QLabel()
+        logo_pixmap = QPixmap("logo.png")
+        if not logo_pixmap.isNull():
+            # Scale the logo to fit in the header
+            scaled_pixmap = logo_pixmap.scaled(120, 70, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_label.setPixmap(scaled_pixmap)
+        else:
+            # Fallback text if image not found
+            logo_label.setText("PIZZA\nMELANO")
+            logo_label.setStyleSheet("""
+                QLabel {
+                    color: #e74c3c;
+                    font-size: 14px;
+                    font-weight: bold;
+                    background: transparent;
+                }
+            """)
+        
+        logo_label.setAlignment(Qt.AlignCenter)
+        logo_label.setFixedSize(120, 70)
+        logo_label.setStyleSheet("""
+            QLabel {
+                background-color: white;
+                border: 2px solid #e74c3c;
+                border-radius: 10px;
+                padding: 5px;
+            }
+        """)
+        
+        header_layout.addWidget(logo_label)
+        
+        # Add header to main layout
+        main_layout.addWidget(header_bar)
+        
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #ddd;
+                background-color: white;
+            }
+            QTabWidget::tab-bar {
+                alignment: center;
+            }
+            QTabBar::tab {
+                background-color: #663399;
+                color: white;
+                padding: 10px 20px;
+                margin-right: 2px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                font-weight: bold;
                 font-size: 14px;
             }
-            QListWidget::item {
-                color: #ecf0f1;
-                height: 50px;
-                padding-left: 15px;
-                border-bottom: 1px solid #34495e;
-                font-weight: 500;
-            }
-            QListWidget::item:selected {
-                background-color: #3498db;
+            QTabBar::tab:selected {
+                background-color: #e74c3c;
                 color: white;
-                border-left: 5px solid #2980b9;
-                font-weight: bold;
             }
-            QListWidget::item:hover:!selected {
-                background-color: #34495e;
-                border-left: 3px solid #7f8c8d;
-            }
-        """)
-        
-        # Add app title/logo to sidebar with enhanced styling
-        logo_label = QLabel("Stock Management")
-        logo_label.setStyleSheet("""
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            padding: 20px 15px;
-            background-color: #1a2530;
-            border-bottom: 2px solid #3498db;
-        """)
-        logo_label.setAlignment(Qt.AlignCenter)
-        
-        sidebar_layout.addWidget(logo_label)
-        sidebar_layout.addWidget(self.sidebar)
-        
-        # Add items to sidebar
-        self.add_sidebar_item("Add New Item")
-        self.add_sidebar_item("Extract Items")
-        self.add_sidebar_item("View Stock")
-        self.add_sidebar_item("Manage Invoices")
-        self.add_sidebar_item("History Operations")
-        self.add_sidebar_item("Settings")
-        
-        # Create content container
-        content_container = QFrame()
-        content_container.setObjectName("contentContainer")
-        content_container.setStyleSheet("""
-            #contentContainer {
-                background-color: #f5f5f5;
-                border-left: 1px solid #ddd;
-            }
-        """)
-        content_layout = QVBoxLayout(content_container)
-        content_layout.setContentsMargins(15, 15, 15, 15)
-        
-        # Create stacked widget for different screens
-        self.stacked_widget = QStackedWidget()
-        self.stacked_widget.setStyleSheet("""
-            QStackedWidget {
-                background-color: white;
-                border-radius: 8px;
-                border: 1px solid #ddd;
+            QTabBar::tab:hover:!selected {
+                background-color: #552288;
             }
         """)
         
@@ -137,7 +190,7 @@ class MainWindow(QMainWindow):
         self.extract_item_widget = ExtractItemWidget()
         self.stock_view_widget = StockViewWidget()
         self.invoice_view_widget = InvoiceViewWidget()
-        self.history_widget = self.create_history_widget()
+        self.pizza_main_widget = PizzaMainWidget()
         self.settings_widget = SettingsWidget(self.user_data)
         
         # Connect print signals
@@ -145,26 +198,22 @@ class MainWindow(QMainWindow):
         self.extract_item_widget.extraction_completed.connect(self.handle_item_extracted)
         self.invoice_view_widget.invoice_updated.connect(self.handle_invoice_updated)
         
-        # Add screens to stacked widget
-        self.stacked_widget.addWidget(self.add_item_widget)
-        self.stacked_widget.addWidget(self.extract_item_widget)
-        self.stacked_widget.addWidget(self.stock_view_widget)
-        self.stacked_widget.addWidget(self.invoice_view_widget)
-        self.stacked_widget.addWidget(self.history_widget)
-        self.stacked_widget.addWidget(self.settings_widget)
+        # Add tabs with Arabic text
+        # self.tab_widget.addTab(self.pizza_main_widget, "الطولات")  # Tables
+        self.tab_widget.addTab(self.invoice_view_widget, "قائمة الطعام")  # Food Menu
+        self.tab_widget.addTab(self.stock_view_widget, "تقارير")  # Reports
+        self.tab_widget.addTab(self.extract_item_widget, "إضافة منتجات")  # Add Products
+        self.tab_widget.addTab(self.add_item_widget, "الإعدادات")  # Settings
+        self.tab_widget.addTab(self.settings_widget, "تسجيل الخروج")  # Logout
         
-        # Add stacked widget to content layout
-        content_layout.addWidget(self.stacked_widget)
+        # Add tab widget to main layout
+        main_layout.addWidget(self.tab_widget)
         
-        # Add widgets to main layout
-        main_layout.addWidget(sidebar_container)
-        main_layout.addWidget(content_container, 1)  # Give content container more space
+        # Connect tab change signal
+        self.tab_widget.currentChanged.connect(self.change_page)
         
-        # Connect sidebar signal
-        self.sidebar.currentRowChanged.connect(self.change_page)
-        
-        # Show stock view by default
-        self.sidebar.setCurrentRow(2)  # View Stock is at index 2
+        # Show pizza main view by default (الطولات)
+        self.tab_widget.setCurrentIndex(0)  # Pizza main is at index 0
     
     def apply_modern_style(self):
         """Apply modern styling to the entire application"""
@@ -273,52 +322,135 @@ class MainWindow(QMainWindow):
             }
         """)
     
-    def create_toolbar(self):
-        """Create the application toolbar"""
-        toolbar = QToolBar("Main Toolbar")
-        toolbar.setIconSize(QSize(24, 24))
-        toolbar.setMovable(False)  # Make toolbar non-movable
-        toolbar.setStyleSheet("""
-            QToolBar {
-                background-color: #3498db;
-                border-bottom: 1px solid #2980b9;
-                spacing: 10px;
-                padding: 5px;
+    def create_title_bar(self, main_layout):
+        """Create custom title bar with window controls"""
+        title_bar = QFrame()
+        title_bar.setFixedHeight(35)
+        title_bar.setStyleSheet("""
+            QFrame {
+                background-color: #2c3e50;
+                border-bottom: 1px solid #34495e;
             }
         """)
-        self.addToolBar(toolbar)
+        title_layout = QHBoxLayout(title_bar)
+        title_layout.setContentsMargins(10, 0, 5, 0)
+        title_layout.setSpacing(0)
         
-        # User info with improved styling
-        user_label = QLabel(f"👤 {self.user_data['username']}")
-        user_label.setStyleSheet("""
-            color: white;
-            font-weight: bold;
-            padding: 5px 10px;
-            background-color: rgba(0, 0, 0, 0.1);
-            border-radius: 4px;
+        # Window title
+        title_label = QLabel(f"Pizza Melano - {self.user_data['username']}")
+        title_label.setStyleSheet("""
+            QLabel {
+                color: white;
+                font-size: 12px;
+                font-weight: bold;
+                background: transparent;
+            }
         """)
-        toolbar.addWidget(user_label)
+        title_layout.addWidget(title_label)
+        title_layout.addStretch()
+        
+        # Window control buttons
+        button_style = """
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                color: white;
+                font-size: 16px;
+                font-weight: bold;
+                width: 30px;
+                height: 30px;
+                margin: 2px;
+            }
+            QPushButton:hover {
+                background-color: #34495e;
+                border-radius: 3px;
+            }
+        """
+        
+        # Minimize button
+        minimize_btn = QPushButton("−")
+        minimize_btn.setStyleSheet(button_style)
+        minimize_btn.clicked.connect(self.showMinimized)
+        minimize_btn.setToolTip("Minimize")
+        
+        # Maximize/Restore button
+        self.maximize_btn = QPushButton("□")
+        self.maximize_btn.setStyleSheet(button_style)
+        self.maximize_btn.clicked.connect(self.toggle_maximize)
+        self.maximize_btn.setToolTip("Maximize")
+        
+        # Close button
+        close_btn = QPushButton("×")
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                color: white;
+                font-size: 18px;
+                font-weight: bold;
+                width: 30px;
+                height: 30px;
+                margin: 2px;
+            }
+            QPushButton:hover {
+                background-color: #e74c3c;
+                border-radius: 3px;
+            }
+        """)
+        close_btn.clicked.connect(self.close)
+        close_btn.setToolTip("Close")
+        
+        title_layout.addWidget(minimize_btn)
+        title_layout.addWidget(self.maximize_btn)
+        title_layout.addWidget(close_btn)
+        
+        # Make title bar draggable
+        title_bar.mousePressEvent = self.title_bar_mouse_press
+        title_bar.mouseMoveEvent = self.title_bar_mouse_move
+        
+        main_layout.addWidget(title_bar)
     
-    def add_sidebar_item(self, text):
-        """Add an item to the sidebar"""
-        item = QListWidgetItem(text)
-        item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)  # Left align text with vertical centering
-        self.sidebar.addItem(item)
+    def toggle_maximize(self):
+        """Toggle between maximized and normal window state"""
+        if self.isMaximized():
+            self.showNormal()
+            self.maximize_btn.setText("□")
+            self.maximize_btn.setToolTip("Maximize")
+        else:
+            self.showMaximized()
+            self.maximize_btn.setText("❐")
+            self.maximize_btn.setToolTip("Restore")
+    
+    def title_bar_mouse_press(self, event):
+        """Handle mouse press on title bar for dragging"""
+        if event.button() == Qt.LeftButton:
+            self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+    
+    def title_bar_mouse_move(self, event):
+        """Handle mouse move on title bar for dragging"""
+        if event.buttons() == Qt.LeftButton and hasattr(self, 'drag_position'):
+            self.move(event.globalPosition().toPoint() - self.drag_position)
+            event.accept()
+    
+    def create_toolbar(self):
+        """Create the application toolbar - hidden for Pizza Melano design"""
+        # Hide toolbar for frameless design
+        pass
     
     def change_page(self, index):
-        """Change the current page based on sidebar selection"""
+        """Change the current page based on tab selection"""
         # Refresh data as needed
-        if index == 1:  # Extract Items
-            self.extract_item_widget.refresh_items()
-        elif index == 2:  # View Stock
-            self.stock_view_widget.refresh_items()
-        elif index == 3:  # Manage Invoices
+        if index == 1:  # Food Menu (Invoice View)
             self.invoice_view_widget.refresh_suppliers()
-        elif index == 4:  # History Operations
-            self.refresh_history()
-            
-        # Change the page
-        self.stacked_widget.setCurrentIndex(index)
+        elif index == 2:  # Reports (Stock View)
+            self.stock_view_widget.refresh_items()
+        elif index == 3:  # Add Products (Extract Items)
+            self.extract_item_widget.refresh_items()
+        elif index == 4:  # Settings (Add Items)
+            pass  # No refresh needed for add items
+        elif index == 5:  # Logout (Settings)
+            pass  # Settings widget handles its own refresh
     
     def create_history_widget(self):
         """Create the history operations widget"""
@@ -479,50 +611,50 @@ class MainWindow(QMainWindow):
         if Settings.get_setting('auto_print', True):
             try:
                 # Get invoice data
-                conn = create_connection()
-                if conn:
-                    cursor = conn.cursor()
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT * FROM invoices WHERE invoice_number = ?", 
+                    (invoice_number,)
+                )
+                invoice_row = cursor.fetchone()
+                
+                if invoice_row:
+                    invoice_data = {
+                        'id': invoice_row[0],
+                        'invoice_number': invoice_row[1],
+                        'supplier_name': invoice_row[2],
+                        'total_amount': invoice_row[3],
+                        'payment_status': invoice_row[4],
+                        'paid_amount': invoice_row[5],
+                        'issue_date': invoice_row[6],
+                        'due_date': invoice_row[7],
+                        'notes': invoice_row[8]
+                    }
+                    
+                    # Get items for this invoice
                     cursor.execute(
-                        "SELECT * FROM invoices WHERE invoice_number = ?", 
+                        "SELECT * FROM items WHERE invoice_number = ?",
                         (invoice_number,)
                     )
-                    invoice_row = cursor.fetchone()
+                    items_data = []
+                    for item_row in cursor.fetchall():
+                        items_data.append({
+                            'id': item_row[0],
+                            'item_name': item_row[1],
+                            'quantity': item_row[2],
+                            'price_per_unit': item_row[3],
+                            'invoice_number': item_row[4],
+                            'supplier_name': item_row[5],
+                            'date_added': item_row[6]
+                        })
                     
-                    if invoice_row:
-                        invoice_data = {
-                            'id': invoice_row[0],
-                            'invoice_number': invoice_row[1],
-                            'supplier_name': invoice_row[2],
-                            'total_amount': invoice_row[3],
-                            'payment_status': invoice_row[4],
-                            'paid_amount': invoice_row[5],
-                            'issue_date': invoice_row[6],
-                            'due_date': invoice_row[7],
-                            'notes': invoice_row[8]
-                        }
-                        
-                        # Get items for this invoice
-                        cursor.execute(
-                            "SELECT * FROM items WHERE invoice_number = ?",
-                            (invoice_number,)
-                        )
-                        items_data = []
-                        for item_row in cursor.fetchall():
-                            items_data.append({
-                                'id': item_row[0],
-                                'item_name': item_row[1],
-                                'quantity': item_row[2],
-                                'price_per_unit': item_row[3],
-                                'invoice_number': item_row[4],
-                                'supplier_name': item_row[5],
-                                'date_added': item_row[6]
-                            })
-                        
-                        # Print the invoice
-                        print_invoice(invoice_data, items_data)
-                    
+                    # Print the invoice
+                    print_invoice(invoice_data, items_data)
+                
+                if 'conn' in locals():
                     conn.close()
-            except Exception as e:
+            except pyodbc.Error as e:
                 QMessageBox.warning(self, "Printing Error", f"Error printing invoice: {e}")
     
     def handle_item_extracted(self, item_id, branch_name, quantity):
@@ -634,3 +766,19 @@ class MainWindow(QMainWindow):
         
         # Show the dialog
         dialog.exec()
+    
+    def logout(self):
+        """Handle logout functionality"""
+        reply = QMessageBox.question(self, 'تسجيل الخروج', 
+                                   'هل أنت متأكد من تسجيل الخروج؟',
+                                   QMessageBox.Yes | QMessageBox.No,
+                                   QMessageBox.No)
+        
+        if reply == QMessageBox.Yes:
+            # Close the main window
+            self.close()
+            
+            # Import and show login widget
+            from ui.login import LoginWidget
+            self.login_widget = LoginWidget()
+            self.login_widget.show()

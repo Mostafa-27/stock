@@ -2,11 +2,11 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QLineEdit,
                               QSpinBox, QDoubleSpinBox, QPushButton, QLabel,
                               QMessageBox, QDateEdit, QComboBox)
 from PySide6.QtCore import Qt, QDate, Signal
-import sqlite3
+import pyodbc
 
 from models.item import Item
 from models.invoice import Invoice
-from database import create_connection
+from database import get_db_connection
 
 class AddItemWidget(QWidget):
     # Signal to notify when an item is added successfully
@@ -120,19 +120,19 @@ class AddItemWidget(QWidget):
             # Update paid amount if needed
             if payment_status == Invoice.PAYMENT_STATUS['PARTIALLY_PAID']:
                 # Get the invoice ID
-                conn = create_connection()
-                if conn:
-                    try:
-                        cursor = conn.cursor()
-                        cursor.execute("SELECT id FROM invoices WHERE invoice_number = ?", (invoice_number,))
-                        result = cursor.fetchone()
-                        if result:
-                            invoice_id = result[0]
-                            # Update the paid amount
-                            Invoice.update_payment_status(invoice_id, payment_status, paid_amount)
-                    except sqlite3.Error as e:
-                        print(f"Database error when updating payment: {e}")
-                    finally:
+                try:
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT id FROM invoices WHERE invoice_number = ?", (invoice_number,))
+                    result = cursor.fetchone()
+                    if result:
+                        invoice_id = result[0]
+                        # Update the paid amount
+                        Invoice.update_payment_status(invoice_id, payment_status, paid_amount)
+                except pyodbc.Error as e:
+                    print(f"Database error when updating payment: {e}")
+                finally:
+                    if 'conn' in locals():
                         conn.close()
             
             QMessageBox.information(self, "Success", "Item added successfully")

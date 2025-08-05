@@ -1,6 +1,6 @@
-import sqlite3
+import pyodbc
 from datetime import datetime
-from database import create_connection
+from database import get_db_connection
 from models.invoice import Invoice
 
 class Item:
@@ -17,22 +17,19 @@ class Item:
     @staticmethod
     def add_item(item_name, quantity, price_per_unit, invoice_number, supplier_name=None, payment_status=None):
         """Add a new item to the database and create/update invoice"""
-        conn = create_connection()
-        if conn is None:
-            return None
-        
         try:
-            conn.execute("BEGIN TRANSACTION")
+            conn = get_db_connection()
             cursor = conn.cursor()
+            cursor.execute("BEGIN TRANSACTION")
             date_added = datetime.now().strftime('%Y-%m-%d')
             
             # Insert item
             sql = '''INSERT INTO items
                     (item_name, quantity, price_per_unit, invoice_number, supplier_name, date_added)
-                    VALUES (?, ?, ?, ?, ?, ?)'''
+                    VALUES (?, ?, ?, ?, ?, ?); SELECT SCOPE_IDENTITY() AS item_id'''
             
             cursor.execute(sql, (item_name, quantity, price_per_unit, invoice_number, supplier_name, date_added))
-            item_id = cursor.lastrowid
+            item_id = cursor.fetchone()[0]
             
             # Check if invoice exists
             cursor.execute("SELECT id, total_amount FROM invoices WHERE invoice_number = ?", (invoice_number,))
@@ -77,7 +74,7 @@ class Item:
             
             conn.commit()
             return item_id
-        except sqlite3.Error as e:
+        except pyodbc.Error as e:
             print(f"Database error: {e}")
             conn.rollback()
             return None
@@ -88,29 +85,29 @@ class Item:
     @staticmethod
     def get_all_items():
         """Get all items from the database"""
-        conn = create_connection()
         items = []
         
-        if conn is not None:
-            try:
-                cur = conn.cursor()
-                cur.execute("SELECT * FROM items")
-                rows = cur.fetchall()
-                
-                for row in rows:
-                    item = Item(
-                        id=row[0],
-                        item_name=row[1],
-                        quantity=row[2],
-                        price_per_unit=row[3],
-                        invoice_number=row[4],
-                        supplier_name=row[5],
-                        date_added=row[6]
-                    )
-                    items.append(item)
-            except sqlite3.Error as e:
-                print(f"Database error: {e}")
-            finally:
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM items")
+            rows = cur.fetchall()
+            
+            for row in rows:
+                item = Item(
+                    id=row[0],
+                    item_name=row[1],
+                    quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
+                    price_per_unit=float(row[3]) if row[3] is not None else 0.0,
+                    invoice_number=row[4],
+                    supplier_name=row[5],
+                    date_added=row[6]
+                )
+                items.append(item)
+        except pyodbc.Error as e:
+            print(f"Database error: {e}")
+        finally:
+            if 'conn' in locals():
                 conn.close()
         
         return items
@@ -118,28 +115,27 @@ class Item:
     @staticmethod
     def get_item_by_id(item_id):
         """Get an item by its ID"""
-        conn = create_connection()
-        
-        if conn is not None:
-            try:
-                cur = conn.cursor()
-                cur.execute("SELECT * FROM items WHERE id = ?", (item_id,))
-                row = cur.fetchone()
-                
-                if row:
-                    item = Item(
-                        id=row[0],
-                        item_name=row[1],
-                        quantity=row[2],
-                        price_per_unit=row[3],
-                        invoice_number=row[4],
-                        supplier_name=row[5],
-                        date_added=row[6]
-                    )
-                    return item
-            except sqlite3.Error as e:
-                print(f"Database error: {e}")
-            finally:
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM items WHERE id = ?", (item_id,))
+            row = cur.fetchone()
+            
+            if row:
+                item = Item(
+                    id=row[0],
+                    item_name=row[1],
+                    quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
+                    price_per_unit=float(row[3]) if row[3] is not None else 0.0,
+                    invoice_number=row[4],
+                    supplier_name=row[5],
+                    date_added=row[6]
+                )
+                return item
+        except pyodbc.Error as e:
+            print(f"Database error: {e}")
+        finally:
+            if 'conn' in locals():
                 conn.close()
         
         return None
@@ -147,48 +143,46 @@ class Item:
     @staticmethod
     def update_quantity(item_id, new_quantity):
         """Update the quantity of an item"""
-        conn = create_connection()
-        
-        if conn is not None:
-            try:
-                sql = '''UPDATE items SET quantity = ? WHERE id = ?'''
-                cur = conn.cursor()
-                cur.execute(sql, (new_quantity, item_id))
-                conn.commit()
-                return cur.rowcount > 0
-            except sqlite3.Error as e:
-                print(f"Database error: {e}")
-            finally:
+        try:
+            conn = get_db_connection()
+            sql = '''UPDATE items SET quantity = ? WHERE id = ?'''
+            cur = conn.cursor()
+            cur.execute(sql, (new_quantity, item_id))
+            conn.commit()
+            return cur.rowcount > 0
+        except pyodbc.Error as e:
+            print(f"Database error: {e}")
+            return False
+        finally:
+            if 'conn' in locals():
                 conn.close()
-        
-        return False
 
     @staticmethod
     def search_items(search_term):
         """Search for items by name"""
-        conn = create_connection()
         items = []
         
-        if conn is not None:
-            try:
-                cur = conn.cursor()
-                cur.execute("SELECT * FROM items WHERE item_name LIKE ?", (f'%{search_term}%',))
-                rows = cur.fetchall()
-                
-                for row in rows:
-                    item = Item(
-                        id=row[0],
-                        item_name=row[1],
-                        quantity=row[2],
-                        price_per_unit=row[3],
-                        invoice_number=row[4],
-                        supplier_name=row[5],
-                        date_added=row[6]
-                    )
-                    items.append(item)
-            except sqlite3.Error as e:
-                print(f"Database error: {e}")
-            finally:
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM items WHERE item_name LIKE ?", (f'%{search_term}%',))
+            rows = cur.fetchall()
+            
+            for row in rows:
+                item = Item(
+                    id=row[0],
+                    item_name=row[1],
+                    quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
+                    price_per_unit=float(row[3]) if row[3] is not None else 0.0,
+                    invoice_number=row[4],
+                    supplier_name=row[5],
+                    date_added=row[6]
+                )
+                items.append(item)
+        except pyodbc.Error as e:
+            print(f"Database error: {e}")
+        finally:
+            if 'conn' in locals():
                 conn.close()
         
         return items
@@ -196,29 +190,29 @@ class Item:
     @staticmethod
     def filter_by_invoice(invoice_number):
         """Filter items by invoice number"""
-        conn = create_connection()
         items = []
         
-        if conn is not None:
-            try:
-                cur = conn.cursor()
-                cur.execute("SELECT * FROM items WHERE invoice_number LIKE ?", (f'%{invoice_number}%',))
-                rows = cur.fetchall()
-                
-                for row in rows:
-                    item = Item(
-                        id=row[0],
-                        item_name=row[1],
-                        quantity=row[2],
-                        price_per_unit=row[3],
-                        invoice_number=row[4],
-                        supplier_name=row[5],
-                        date_added=row[6]
-                    )
-                    items.append(item)
-            except sqlite3.Error as e:
-                print(f"Database error: {e}")
-            finally:
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM items WHERE invoice_number LIKE ?", (f'%{invoice_number}%',))
+            rows = cur.fetchall()
+            
+            for row in rows:
+                item = Item(
+                    id=row[0],
+                    item_name=row[1],
+                    quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
+                    price_per_unit=float(row[3]) if row[3] is not None else 0.0,
+                    invoice_number=row[4],
+                    supplier_name=row[5],
+                    date_added=row[6]
+                )
+                items.append(item)
+        except pyodbc.Error as e:
+            print(f"Database error: {e}")
+        finally:
+            if 'conn' in locals():
                 conn.close()
         
         return items

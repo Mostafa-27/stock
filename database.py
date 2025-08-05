@@ -1,119 +1,170 @@
 import os
-import sqlite3
+import pyodbc
 import time
-from sqlite3 import Error
 
-DATABASE_FILE = "stock_management.db"
+# SQL Server connection configuration
+DATABASE = "stock"
+SERVER = r".\SQLEXPRESS"
+# SERVER = r"DESKTOP-AR99KHQ"
+
+def get_db_connection():
+    """Helper to get a new DB connection."""
+    conn_str = (
+        r"DRIVER={SQL Server};"
+        fr"SERVER={SERVER};"
+        fr"DATABASE={DATABASE};"
+        r"Trusted_Connection=yes;"
+        r"TrustServerCertificate=yes;"
+    )
+    return pyodbc.connect(conn_str)
+
+def create_database_if_not_exists():
+    """Create the database if it doesn't exist"""
+    try:
+        # Connect to master database to check if our database exists
+        master_conn_str = (
+            r"DRIVER={SQL Server};"
+            fr"SERVER={SERVER};"
+            r"DATABASE=master;"
+            r"Trusted_Connection=yes;"
+            r"TrustServerCertificate=yes;"
+        )
+        conn = pyodbc.connect(master_conn_str)
+        conn.autocommit = True  # Enable autocommit for CREATE DATABASE
+        cursor = conn.cursor()
+        
+        # Check if database exists
+        cursor.execute("SELECT database_id FROM sys.databases WHERE name = ?", (DATABASE,))
+        if cursor.fetchone() is None:
+            # Database doesn't exist, create it
+            cursor.execute(f"CREATE DATABASE [{DATABASE}]")
+            print(f"Database '{DATABASE}' created successfully.")
+        else:
+            print(f"Database '{DATABASE}' already exists.")
+        
+        cursor.close()
+        conn.close()
+        
+    except pyodbc.Error as e:
+        print(f"Error creating database: {e}")
+        raise
 
 def is_database_locked():
-    """Check if the database is locked and try to fix it"""
-    # Check if database file exists
-    if not os.path.exists(DATABASE_FILE):
-        return False
-    
-    # Try to open and close the database to check if it's locked
-    for attempt in range(3):  # Try 3 times
-        try:
-            conn = sqlite3.connect(DATABASE_FILE, timeout=5)
-            conn.execute("PRAGMA busy_timeout = 5000")  # Set busy timeout to 5 seconds
-            conn.execute("SELECT 1")  # Simple query to test connection
-            conn.close()
-            return False  # Database is not locked
-        except sqlite3.OperationalError as e:
-            if "database is locked" in str(e):
-                print(f"Database is locked, attempt {attempt+1}/3 to fix...")
-                time.sleep(1)  # Wait a bit before retrying
-            else:
-                print(f"Database error: {e}")
-                return False
-    
-    # If we get here, the database is still locked after retries
-    print("Database is locked and could not be fixed automatically.")
-    print("Please close any other applications that might be using the database.")
-    return True
+    """Check if the database connection is available"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.close()
+        conn.close()
+        return False  # Database is accessible
+    except pyodbc.Error as e:
+        print(f"Database connection error: {e}")
+        return True
 
 def create_connection():
-    """Create a database connection to the SQLite database"""
-    # Check if database is locked and try to fix it
-    if is_database_locked():
-        return None
-    
-    conn = None
+    """Create a database connection to SQL Server"""
     try:
-        # Set a longer timeout and busy_timeout to handle concurrent access
-        conn = sqlite3.connect(DATABASE_FILE, timeout=10)
-        conn.execute("PRAGMA busy_timeout = 10000")  # 10 seconds
-        return conn
-    except Error as e:
+        # Ensure database exists before connecting
+        create_database_if_not_exists()
+        return get_db_connection()
+    except pyodbc.Error as e:
         print(f"Database error: {e}")
-    
-    return conn
+        return None
 
-def create_tables(conn):
+def create_tables():
     """Create the necessary tables if they don't exist"""
-    # Create items table
-    items_table = """CREATE TABLE IF NOT EXISTS items (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        item_name TEXT NOT NULL,
-                        quantity INTEGER NOT NULL,
-                        price_per_unit REAL NOT NULL,
-                        invoice_number TEXT NOT NULL,
-                        supplier_name TEXT,
-                        date_added TEXT NOT NULL
-                    );"""
-    
-    # Create extractions table
-    extractions_table = """CREATE TABLE IF NOT EXISTS extractions (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            item_id INTEGER NOT NULL,
-                            branch_name TEXT NOT NULL,
-                            quantity_extracted INTEGER NOT NULL,
-                            date_extracted TEXT NOT NULL,
-                            FOREIGN KEY (item_id) REFERENCES items (id)
-                        );"""
-    
-    # Create invoices table
-    invoices_table = """CREATE TABLE IF NOT EXISTS invoices (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        invoice_number TEXT NOT NULL UNIQUE,
-                        supplier_name TEXT NOT NULL,
-                        total_amount REAL NOT NULL,
-                        payment_status TEXT NOT NULL,
-                        paid_amount REAL DEFAULT 0,
-                        issue_date TEXT NOT NULL,
-                        due_date TEXT,
-                        notes TEXT
-                    );"""
-    
-    # Create users table
-    users_table = """CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT NOT NULL UNIQUE,
-                    password TEXT NOT NULL,
-                    is_admin INTEGER DEFAULT 0
-                );"""
-    
-    # Create settings table
-    settings_table = """CREATE TABLE IF NOT EXISTS settings (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        setting_name TEXT NOT NULL UNIQUE,
-                        setting_value TEXT,
-                        setting_type TEXT
-                    );"""
+    # Ensure database exists before creating tables
+    create_database_if_not_exists()
+    conn = get_db_connection()
+    cursor = conn.cursor()
     
     try:
-        cursor = conn.cursor()
+        # Create items table
+        items_table = """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='items' AND xtype='U')
+                         BEGIN
+                         CREATE TABLE items (
+                            id INT IDENTITY(1,1) PRIMARY KEY,
+                            item_name NVARCHAR(255) NOT NULL,
+                            quantity INT NOT NULL,
+                            price_per_unit DECIMAL(10,2) NOT NULL,
+                            invoice_number NVARCHAR(100) NOT NULL,
+                            supplier_name NVARCHAR(255),
+                            date_added DATETIME NOT NULL
+                        )
+                        END"""
+        
+        # Create extractions table
+        extractions_table = """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='extractions' AND xtype='U')
+                               BEGIN
+                               CREATE TABLE extractions (
+                                id INT IDENTITY(1,1) PRIMARY KEY,
+                                item_id INT NOT NULL,
+                                branch_name NVARCHAR(255) NOT NULL,
+                                quantity_extracted INT NOT NULL,
+                                date_extracted DATETIME NOT NULL,
+                                FOREIGN KEY (item_id) REFERENCES items (id)
+                            )
+                            END"""
+    
+        # Create invoices table
+        invoices_table = """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='invoices' AND xtype='U')
+                            BEGIN
+                            CREATE TABLE invoices (
+                            id INT IDENTITY(1,1) PRIMARY KEY,
+                            invoice_number NVARCHAR(100) NOT NULL UNIQUE,
+                            supplier_name NVARCHAR(255) NOT NULL,
+                            total_amount DECIMAL(10,2) NOT NULL,
+                            payment_status NVARCHAR(50) NOT NULL,
+                            paid_amount DECIMAL(10,2) DEFAULT 0,
+                            issue_date DATETIME NOT NULL,
+                            due_date DATETIME,
+                            notes NTEXT
+                        )
+                        END"""
+        
+        # Create users table
+        users_table = """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='users' AND xtype='U')
+                         BEGIN
+                         CREATE TABLE users (
+                        id INT IDENTITY(1,1) PRIMARY KEY,
+                        name NVARCHAR(255) NOT NULL,
+                        phone NVARCHAR(50) NOT NULL,
+                        email NVARCHAR(255) NOT NULL,
+                        username NVARCHAR(100),
+                        password NVARCHAR(255),
+                        role NVARCHAR(50) NOT NULL,
+                        job_title NVARCHAR(255),
+                        salary NVARCHAR(50)
+                    )
+                    END"""
+    
+        # Create settings table
+        settings_table = """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='settings' AND xtype='U')
+                            BEGIN
+                            CREATE TABLE settings (
+                            id INT IDENTITY(1,1) PRIMARY KEY,
+                            setting_name NVARCHAR(100) NOT NULL UNIQUE,
+                            setting_value NTEXT,
+                            setting_type NVARCHAR(50)
+                        )
+                        END"""
+        
+        # Execute table creation statements
         cursor.execute(items_table)
         cursor.execute(extractions_table)
         cursor.execute(invoices_table)
         cursor.execute(users_table)
         cursor.execute(settings_table)
         
+        # No need to add is_admin column since table now uses role column
+        
         # Check if admin user exists, if not create default admin user
-        cursor.execute("SELECT COUNT(*) FROM users WHERE username = 'admin'")
+        cursor.execute("SELECT COUNT(*) FROM users WHERE username = ?", ('admin',))
         if cursor.fetchone()[0] == 0:
-            cursor.execute("INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)", 
-                          ('admin', 'admin', 1))
+            # Create admin user with all required fields
+            cursor.execute("INSERT INTO users (name, phone, email, username, password, role) VALUES (?, ?, ?, ?, ?, ?)", 
+                          ('Administrator', '000-000-0000', 'admin@restaurant.com', 'admin', 'admin', 'admin'))
         
         # Initialize default settings if they don't exist
         default_settings = [
@@ -123,9 +174,22 @@ def create_tables(conn):
         ]
         
         for setting in default_settings:
-            cursor.execute("INSERT OR IGNORE INTO settings (setting_name, setting_value, setting_type) VALUES (?, ?, ?)",
-                          setting)
+            # Use MERGE for SQL Server equivalent of INSERT OR IGNORE
+            merge_sql = """
+            MERGE settings AS target
+            USING (SELECT ? AS setting_name, ? AS setting_value, ? AS setting_type) AS source
+            ON target.setting_name = source.setting_name
+            WHEN NOT MATCHED THEN
+                INSERT (setting_name, setting_value, setting_type)
+                VALUES (source.setting_name, source.setting_value, source.setting_type);
+            """
+            cursor.execute(merge_sql, (setting[0], setting[1], setting[2]))
         
         conn.commit()
-    except Error as e:
-        print(e)
+        
+    except pyodbc.Error as e:
+        print(f"Database error: {e}")
+        conn.rollback()
+    finally:
+        cursor.close()
+        conn.close()

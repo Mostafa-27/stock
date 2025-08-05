@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QTimer
 
 from ui.main_window import MainWindow
 from ui.login import LoginWidget
-from database import create_connection, create_tables, is_database_locked
+from database import create_tables
 
 def main():
     # Create the application
@@ -21,31 +21,17 @@ def main():
     splash.show()
     app.processEvents()
     
-    # Check if database is locked
-    if is_database_locked():
-        splash.close()
-        # Show error message and exit
-        error_dialog = QMessageBox()
-        error_dialog.setIcon(QMessageBox.Critical)
-        error_dialog.setWindowTitle("Database Error")
-        error_dialog.setText("The database is locked by another process.")
-        error_dialog.setInformativeText("Please close any other instances of the application and try again.")
-        error_dialog.exec()
-        return
-    
     # Initialize database
-    conn = create_connection()
-    if conn is not None:
-        create_tables(conn)
-        conn.close()
-    else:
+    try:
+        create_tables()
+    except Exception as e:
         splash.close()
         # Show error message and exit
         error_dialog = QMessageBox()
         error_dialog.setIcon(QMessageBox.Critical)
         error_dialog.setWindowTitle("Database Error")
         error_dialog.setText("Cannot create the database connection.")
-        error_dialog.setInformativeText("Please check if the database file is accessible and not corrupted.")
+        error_dialog.setInformativeText(f"Please check if the database is accessible: {str(e)}")
         error_dialog.exec()
         return
     

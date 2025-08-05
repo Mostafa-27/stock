@@ -1,3 +1,5 @@
 PySide6>=6.4.0
 pyinstaller>=5.6.0
 pywin32>=305
+pyodbc>=4.0.34
+sqlalchemy>=1.4.0
