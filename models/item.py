@@ -20,16 +20,30 @@ class Item:
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("BEGIN TRANSACTION")
             date_added = datetime.now().strftime('%Y-%m-%d')
             
             # Insert item
             sql = '''INSERT INTO items
                     (item_name, quantity, price_per_unit, invoice_number, supplier_name, date_added)
-                    VALUES (?, ?, ?, ?, ?, ?); SELECT SCOPE_IDENTITY() AS item_id'''
+                    VALUES (?, ?, ?, ?, ?, ?)'''
             
+            print(f"Executing SQL: {sql}")
             cursor.execute(sql, (item_name, quantity, price_per_unit, invoice_number, supplier_name, date_added))
-            item_id = cursor.fetchone()[0]
+            
+            # Get the last inserted ID
+            cursor.execute("SELECT SCOPE_IDENTITY()")
+            result = cursor.fetchone()
+            if result and result[0] is not None:
+                item_id = int(result[0])
+                print(f"Inserted item ID: {item_id}")
+            else:
+                # Fallback: get the max ID from items table
+                cursor.execute("SELECT MAX(id) FROM items WHERE item_name = ? AND invoice_number = ?", 
+                             (item_name, invoice_number))
+                result = cursor.fetchone()
+                item_id = int(result[0]) if result and result[0] is not None else 1
+                print(f"Fallback item ID: {item_id}")
+
             
             # Check if invoice exists
             cursor.execute("SELECT id, total_amount FROM invoices WHERE invoice_number = ?", (invoice_number,))
@@ -70,7 +84,16 @@ class Item:
                     issue_date
                 ))
                 
-                invoice_id = cursor.lastrowid
+                # Get the last inserted invoice ID
+                cursor.execute("SELECT SCOPE_IDENTITY()")
+                result = cursor.fetchone()
+                if result and result[0] is not None:
+                    invoice_id = int(result[0])
+                else:
+                    # Fallback: get the max ID from invoices table
+                    cursor.execute("SELECT MAX(id) FROM invoices WHERE invoice_number = ?", (invoice_number,))
+                    result = cursor.fetchone()
+                    invoice_id = int(result[0]) if result and result[0] is not None else 1
             
             conn.commit()
             return item_id

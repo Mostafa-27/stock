@@ -15,6 +15,7 @@ from ui.invoice_view import InvoiceViewWidget
 from models.extraction import Extraction
 from ui.settings import SettingsWidget
 from ui.pizza_main import PizzaMainWidget
+from ui.suppliers import SuppliersWidget
 from models.settings import Settings
 from utils.printer_utils import print_invoice, show_print_dialog
 from models.invoice import Invoice
@@ -191,6 +192,7 @@ class MainWindow(QMainWindow):
         self.stock_view_widget = StockViewWidget()
         self.invoice_view_widget = InvoiceViewWidget()
         self.pizza_main_widget = PizzaMainWidget()
+        self.suppliers_widget = SuppliersWidget()
         self.settings_widget = SettingsWidget(self.user_data)
         
         # Connect print signals
@@ -203,6 +205,7 @@ class MainWindow(QMainWindow):
         self.tab_widget.addTab(self.invoice_view_widget, "قائمة الطعام")  # Food Menu
         self.tab_widget.addTab(self.stock_view_widget, "تقارير")  # Reports
         self.tab_widget.addTab(self.extract_item_widget, "إضافة منتجات")  # Add Products
+        self.tab_widget.addTab(self.suppliers_widget, "الموردين")  # Suppliers
         self.tab_widget.addTab(self.add_item_widget, "الإعدادات")  # Settings
         self.tab_widget.addTab(self.settings_widget, "تسجيل الخروج")  # Logout
         
