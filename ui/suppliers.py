@@ -109,6 +109,13 @@ class SuppliersWidget(QWidget):
             conn.close()
             
             if not branch_data:
+                # Clear table and show empty state
+                self.branch_table.setRowCount(0)
+                self.branch_report_frame.show()
+                self.adjust_branch_table_height()
+                
+                # Switch to branch tab and show message
+                self.tab_widget.setCurrentIndex(1)
                 QMessageBox.information(self, "معلومات", "لا توجد بيانات فروع للعرض")
                 return
             
@@ -131,6 +138,9 @@ class SuppliersWidget(QWidget):
             
             # Show the branch report frame
             self.branch_report_frame.show()
+            
+            # Adjust branch table height
+            self.adjust_branch_table_height()
             
             # Switch to branch tab
             self.tab_widget.setCurrentIndex(1)
@@ -414,6 +424,8 @@ class SuppliersWidget(QWidget):
         self.invoices_table.verticalHeader().setDefaultSectionSize(35)  # Row height
         self.invoices_table.setMaximumHeight(600)  # Maximum height to prevent excessive growth
         
+
+        
         # Style the table
         self.invoices_table.setStyleSheet("""
             QTableWidget {
@@ -605,10 +617,47 @@ class SuppliersWidget(QWidget):
                 padding: 0 5px 0 5px;
             }
         """)
-        branch_actions_layout = QHBoxLayout(branch_actions_frame)
+        branch_actions_layout = QVBoxLayout(branch_actions_frame)
+        
+        # Branch selection section
+        branch_selection_layout = QHBoxLayout()
+        branch_label = QLabel("اختر الفرع:")
+        branch_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #2c3e50;")
+        
+        self.branch_combo = QComboBox()
+        self.branch_combo.setStyleSheet("""
+            QComboBox {
+                border: 2px solid #bdc3c7;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 14px;
+                background-color: white;
+                min-width: 200px;
+            }
+            QComboBox:hover {
+                border-color: #3498db;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #2c3e50;
+                margin-right: 10px;
+            }
+        """)
+        
+        branch_selection_layout.addWidget(branch_label)
+        branch_selection_layout.addWidget(self.branch_combo)
+        branch_selection_layout.addStretch()
+        
+        # Buttons layout
+        buttons_layout = QHBoxLayout()
         
         # Generate branch report button
-        branch_report_btn = QPushButton("إنشاء تقرير الفروع")
+        branch_report_btn = QPushButton("إنشاء تقرير الأصناف المستخرجة")
         branch_report_btn.setStyleSheet("""
             QPushButton {
                 background-color: #9b59b6;
@@ -626,7 +675,7 @@ class SuppliersWidget(QWidget):
                 background-color: #7d3c98;
             }
         """)
-        branch_report_btn.clicked.connect(self.generate_branch_report_inline)
+        branch_report_btn.clicked.connect(self.generate_branch_items_report)
         
         # Export branch report to PDF button
         export_branch_pdf_btn = QPushButton("تصدير تقرير الفروع إلى PDF")
@@ -649,14 +698,17 @@ class SuppliersWidget(QWidget):
         """)
         export_branch_pdf_btn.clicked.connect(self.export_branch_report_to_pdf)
         
-        branch_actions_layout.addWidget(branch_report_btn)
-        branch_actions_layout.addWidget(export_branch_pdf_btn)
-        branch_actions_layout.addStretch()
+        buttons_layout.addWidget(branch_report_btn)
+        buttons_layout.addWidget(export_branch_pdf_btn)
+        buttons_layout.addStretch()
+        
+        branch_actions_layout.addLayout(branch_selection_layout)
+        branch_actions_layout.addLayout(buttons_layout)
         
         layout.addWidget(branch_actions_frame)
         
         # Branch report display table
-        self.branch_report_frame = QGroupBox("تقرير الفروع")
+        self.branch_report_frame = QGroupBox("تقرير الأصناف المستخرجة")
         self.branch_report_frame.setStyleSheet("""
             QGroupBox {
                 font-size: 16px;
@@ -676,9 +728,9 @@ class SuppliersWidget(QWidget):
         branch_report_layout = QVBoxLayout(self.branch_report_frame)
         
         self.branch_table = QTableWidget()
-        self.branch_table.setColumnCount(6)
+        self.branch_table.setColumnCount(7)
         self.branch_table.setHorizontalHeaderLabels([
-            "اسم الفرع", "كود الفرع", "مدير الفرع", "إجمالي الاستخراجات", "إجمالي الكمية", "عدد الأصناف المختلفة"
+            "رقم الفاتورة", "اسم الصنف", "الوحدة", "الكمية المستخرجة", "تاريخ الاستخراج", "المورد", "ملاحظات"
         ])
         
         # Style the branch table
@@ -714,11 +766,19 @@ class SuppliersWidget(QWidget):
         self.branch_table.setAlternatingRowColors(True)
         self.branch_table.setSelectionBehavior(QTableWidget.SelectRows)
         
+        # Set dynamic height based on content
+        self.branch_table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
+        self.branch_table.verticalHeader().setDefaultSectionSize(35)  # Row height
+        self.branch_table.setMaximumHeight(600)  # Maximum height to prevent excessive growth
+        
         branch_report_layout.addWidget(self.branch_table)
         layout.addWidget(self.branch_report_frame)
         
         # Initially hide the branch report frame
         self.branch_report_frame.hide()
+        
+        # Load branches into combo box
+        self.load_branches_combo()
         
         return tab
     
@@ -738,6 +798,23 @@ class SuppliersWidget(QWidget):
                 # Set minimum height but respect maximum
                 min_height = min(max(total_height, 200), 600)
                 self.invoices_table.setMinimumHeight(min_height)
+    
+    def adjust_branch_table_height(self):
+        """Dynamically adjust branch table height based on number of rows"""
+        if hasattr(self, 'branch_table'):
+            row_count = self.branch_table.rowCount()
+            if row_count == 0:
+                # Minimum height when no data
+                self.branch_table.setMinimumHeight(150)
+            else:
+                # Calculate height: header + rows + some padding
+                header_height = self.branch_table.horizontalHeader().height()
+                row_height = self.branch_table.verticalHeader().defaultSectionSize()
+                total_height = header_height + (row_count * row_height) + 20  # 20px padding
+                
+                # Set minimum height but respect maximum
+                min_height = min(max(total_height, 200), 600)
+                self.branch_table.setMinimumHeight(min_height)
         
     def load_suppliers(self):
         """Load all suppliers from the new suppliers table"""
@@ -1064,6 +1141,86 @@ class SuppliersWidget(QWidget):
             QMessageBox.information(self, "نجح", f"تم تصدير تقرير الفروع بنجاح إلى:\n{file_path}")
         except Exception as e:
             QMessageBox.critical(self, "خطأ", f"فشل في تصدير تقرير الفروع: {e}")
+    
+    def load_branches_combo(self):
+        """Load branches into the combo box"""
+        try:
+            branches = Branch.get_all_branches()
+            
+            self.branch_combo.clear()
+            self.branch_combo.addItem("-- اختر الفرع --", None)
+            
+            for branch in branches:
+                if branch['branch_name']:  # Check if branch name is not None
+                    self.branch_combo.addItem(branch['branch_name'], branch['id'])
+                    
+        except Exception as e:
+            QMessageBox.critical(self, "خطأ في قاعدة البيانات", f"فشل في تحميل الفروع: {e}")
+    
+    def generate_branch_items_report(self):
+        """Generate branch items extraction report"""
+        selected_branch_id = self.branch_combo.currentData()
+        selected_branch_name = self.branch_combo.currentText()
+        
+        if selected_branch_id is None or selected_branch_name == "-- اختر الفرع --":
+            QMessageBox.warning(self, "تحذير", "يرجى اختيار فرع أولاً")
+            return
+        
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Get extraction data for the selected branch using branch_id
+            cursor.execute("""
+                SELECT i.invoice_number, i.item_name, 'قطعة' as unit, e.quantity_extracted, 
+                       e.date_extracted, i.supplier_name, 'لا توجد ملاحظات' as notes
+                FROM extractions e
+                JOIN items i ON e.item_id = i.id
+                WHERE e.branch_id = ?
+                ORDER BY e.date_extracted DESC
+            """, [selected_branch_id])
+            
+            extraction_data = cursor.fetchall()
+            conn.close()
+            
+            if not extraction_data:
+                # Clear table and show empty state
+                self.branch_table.setRowCount(0)
+                self.branch_report_frame.show()
+                self.adjust_branch_table_height()
+                QMessageBox.information(self, "معلومات", f"لا توجد بيانات استخراج للفرع: {selected_branch_name}")
+                return
+            
+            # Store extraction data for export
+            self.current_extraction_data = extraction_data
+            
+            # Clear existing data
+            self.branch_table.setRowCount(0)
+            
+            # Populate the branch table
+            self.branch_table.setRowCount(len(extraction_data))
+            
+            for row, data in enumerate(extraction_data):
+                self.branch_table.setItem(row, 0, QTableWidgetItem(str(data[0]) if data[0] else ""))
+                self.branch_table.setItem(row, 1, QTableWidgetItem(str(data[1]) if data[1] else ""))
+                self.branch_table.setItem(row, 2, QTableWidgetItem(str(data[2]) if data[2] else ""))
+                self.branch_table.setItem(row, 3, QTableWidgetItem(str(data[3])))
+                
+                # Format date
+                date_str = data[4].strftime("%Y-%m-%d") if data[4] else ""
+                self.branch_table.setItem(row, 4, QTableWidgetItem(date_str))
+                
+                self.branch_table.setItem(row, 5, QTableWidgetItem(str(data[5]) if data[5] else ""))
+                self.branch_table.setItem(row, 6, QTableWidgetItem(str(data[6]) if data[6] else ""))
+            
+            # Show the branch report frame
+            self.branch_report_frame.show()
+            
+            # Adjust branch table height
+            self.adjust_branch_table_height()
+            
+        except pyodbc.Error as e:
+            QMessageBox.critical(self, "خطأ في قاعدة البيانات", f"فشل في تحميل تقرير الفرع: {e}")
     
     def create_branch_report_pdf(self, file_path, branch_data):
         """Create PDF report for branches"""

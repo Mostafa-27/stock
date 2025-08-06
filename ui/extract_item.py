@@ -94,17 +94,18 @@ class ExtractItemWidget(QWidget):
             QMessageBox.warning(self, "Validation Error", "No items available for extraction")
             return
         
-        if self.branch_combo.currentText() == "-- اختر الفرع --":
+        if self.branch_combo.currentData() is None:
             QMessageBox.warning(self, "Validation Error", "Please select a branch")
             return
         
         # Get form values
         item_id = self.item_combo.currentData()
+        branch_id = self.branch_combo.currentData()
         branch_name = self.branch_combo.currentText()
         quantity = self.quantity.value()
         
-        # Extract item
-        success, message = Extraction.extract_item(item_id, branch_name, quantity)
+        # Extract item using branch_id
+        success, message = Extraction.extract_item(item_id, branch_id, quantity)
         
         if success:
             QMessageBox.information(self, "Success", message)
@@ -118,10 +119,12 @@ class ExtractItemWidget(QWidget):
     def load_branches(self):
         """Load branches from the new branches table"""
         try:
-            branch_names = Branch.get_branch_names()
+            branches = Branch.get_all_branches()
             self.branch_combo.clear()
-            self.branch_combo.addItem("-- اختر الفرع --")
-            self.branch_combo.addItems(branch_names)
+            self.branch_combo.addItem("-- اختر الفرع --", None)
+            
+            for branch in branches:
+                self.branch_combo.addItem(branch['branch_name'], branch['id'])
         except Exception as e:
             QMessageBox.warning(self, "خطأ", f"فشل في تحميل الفروع: {e}")
     

@@ -72,6 +72,42 @@ def create_connection():
         print(f"Database error: {e}")
         return None
 
+def migrate_extractions_table(cursor):
+    """Migrate extractions table to use branch_id instead of branch_name"""
+    try:
+        # Check if branch_id column exists
+        cursor.execute("""
+            SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_NAME = 'extractions' AND COLUMN_NAME = 'branch_id'
+        """)
+        
+        if cursor.fetchone()[0] == 0:
+            # Add branch_id column
+            cursor.execute("ALTER TABLE extractions ADD branch_id INT")
+            
+            # Update existing records to set branch_id based on branch_name
+            cursor.execute("""
+                UPDATE e SET e.branch_id = b.id
+                FROM extractions e
+                INNER JOIN branches b ON e.branch_name = b.branch_name
+                WHERE e.branch_id IS NULL
+            """)
+            
+            # Make branch_id NOT NULL after updating existing records
+            cursor.execute("ALTER TABLE extractions ALTER COLUMN branch_id INT NOT NULL")
+            
+            # Add foreign key constraint
+            cursor.execute("""
+                ALTER TABLE extractions 
+                ADD CONSTRAINT FK_extractions_branch_id 
+                FOREIGN KEY (branch_id) REFERENCES branches (id)
+            """)
+            
+            print("Extractions table migrated to use branch_id")
+            
+    except Exception as e:
+        print(f"Migration error: {e}")
+
 def create_tables():
     """Create the necessary tables if they don't exist"""
     # Ensure database exists before creating tables
@@ -100,10 +136,12 @@ def create_tables():
                                CREATE TABLE extractions (
                                 id INT IDENTITY(1,1) PRIMARY KEY,
                                 item_id INT NOT NULL,
-                                branch_name NVARCHAR(255) NOT NULL,
+                                branch_id INT NOT NULL,
+                                branch_name NVARCHAR(255),
                                 quantity_extracted INT NOT NULL,
                                 date_extracted DATETIME NOT NULL,
-                                FOREIGN KEY (item_id) REFERENCES items (id)
+                                FOREIGN KEY (item_id) REFERENCES items (id),
+                                FOREIGN KEY (branch_id) REFERENCES branches (id)
                             )
                             END"""
     
@@ -192,6 +230,9 @@ def create_tables():
         cursor.execute(settings_table)
         cursor.execute(suppliers_table)
         cursor.execute(branches_table)
+        
+        # Migrate existing extractions table to use branch_id
+        migrate_extractions_table(cursor)
         
         # No need to add is_admin column since table now uses role column
         
