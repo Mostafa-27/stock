@@ -6,6 +6,7 @@ import pyodbc
 
 from models.item import Item
 from models.invoice import Invoice
+from models.supplier import Supplier
 from database import get_db_connection
 
 class AddItemWidget(QWidget):
@@ -33,7 +34,7 @@ class AddItemWidget(QWidget):
         self.price.setMaximum(1000000.00)
         self.price.setDecimals(2)
         
-        self.supplier_name = QLineEdit()
+        self.supplier_combo = QComboBox()
         
         self.date = QDateEdit()
         self.date.setDate(QDate.currentDate())
@@ -58,7 +59,7 @@ class AddItemWidget(QWidget):
         form_layout.addRow("Item Name *:", self.item_name)
         form_layout.addRow("Quantity *:", self.quantity)
         form_layout.addRow("Price per Unit *:", self.price)
-        form_layout.addRow("Supplier Name:", self.supplier_name)
+        form_layout.addRow("Supplier *:", self.supplier_combo)
         form_layout.addRow("Date:", self.date)
         form_layout.addRow("Payment Status:", self.payment_status)
         form_layout.addRow("Paid Amount:", self.paid_amount)
@@ -82,6 +83,19 @@ class AddItemWidget(QWidget):
         self.save_button.clicked.connect(self.save_item)
         self.clear_button.clicked.connect(self.clear_form)
         self.payment_status.currentTextChanged.connect(self.on_payment_status_changed)
+        
+        # Load suppliers
+        self.load_suppliers()
+    
+    def load_suppliers(self):
+        """Load suppliers from the new suppliers table"""
+        try:
+            supplier_names = Supplier.get_supplier_names()
+            self.supplier_combo.clear()
+            self.supplier_combo.addItem("-- اختر المورد --")
+            self.supplier_combo.addItems(supplier_names)
+        except Exception as e:
+            QMessageBox.warning(self, "خطأ", f"فشل في تحميل الموردين: {e}")
     
     def on_payment_status_changed(self, status):
         # Show paid amount field only for partially paid status
@@ -97,12 +111,16 @@ class AddItemWidget(QWidget):
             QMessageBox.warning(self, "Validation Error", "Item Name is required")
             return
         
+        if self.supplier_combo.currentText() == "-- اختر المورد --":
+            QMessageBox.warning(self, "Validation Error", "Please select a supplier")
+            return
+        
         # Get form values
         invoice_number = self.invoice_number.text()
         item_name = self.item_name.text()
         quantity = self.quantity.value()
         price = self.price.value()
-        supplier_name = self.supplier_name.text()
+        supplier_name = self.supplier_combo.currentText()
         payment_status = self.payment_status.currentText()
         
         # Get paid amount if partially paid
@@ -147,7 +165,7 @@ class AddItemWidget(QWidget):
         self.item_name.clear()
         self.quantity.setValue(1)
         self.price.setValue(0.01)
-        self.supplier_name.clear()
+        self.supplier_combo.setCurrentIndex(0)  # Reset to "-- اختر المورد --"
         self.date.setDate(QDate.currentDate())
         self.payment_status.setCurrentText(Invoice.PAYMENT_STATUS['DELAYED'])
         self.paid_amount.setValue(0.00)

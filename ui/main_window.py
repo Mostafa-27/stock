@@ -20,6 +20,7 @@ from models.settings import Settings
 from utils.printer_utils import print_invoice, show_print_dialog
 from models.invoice import Invoice
 from database import get_db_connection
+from management import ManagementWindow
 
 class MainWindow(QMainWindow):
     def __init__(self, user_data=None):
@@ -195,6 +196,9 @@ class MainWindow(QMainWindow):
         self.suppliers_widget = SuppliersWidget()
         self.settings_widget = SettingsWidget(self.user_data)
         
+        # Create management widget wrapper
+        self.management_widget = self.create_management_widget()
+        
         # Connect print signals
         self.add_item_widget.item_added.connect(self.handle_item_added)
         self.extract_item_widget.extraction_completed.connect(self.handle_item_extracted)
@@ -206,6 +210,7 @@ class MainWindow(QMainWindow):
         self.tab_widget.addTab(self.stock_view_widget, "المخزون")  # Reports
         self.tab_widget.addTab(self.extract_item_widget, "تصدير منتجات")  # Add Products
         self.tab_widget.addTab(self.suppliers_widget, "الموردين")  # Suppliers
+        self.tab_widget.addTab(self.management_widget, "إدارة الموردين والفروع")  # Management
         self.tab_widget.addTab(self.add_item_widget, "إضافة منتجات")  # Settings
         self.tab_widget.addTab(self.settings_widget, "إعدادات")  # Logout
         
@@ -769,6 +774,76 @@ class MainWindow(QMainWindow):
         
         # Show the dialog
         dialog.exec()
+    
+    def create_management_widget(self):
+        """Create a wrapper widget for the management window"""
+        wrapper = QWidget()
+        layout = QVBoxLayout(wrapper)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Create a button to open the management window
+        open_management_btn = QPushButton("فتح إدارة الموردين والفروع")
+        open_management_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #8e44ad;
+                color: white;
+                border: none;
+                padding: 15px 30px;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: bold;
+                margin: 50px;
+            }
+            QPushButton:hover {
+                background-color: #7d3c98;
+            }
+            QPushButton:pressed {
+                background-color: #6c3483;
+            }
+        """)
+        open_management_btn.clicked.connect(self.open_management_window)
+        
+        # Store button reference in wrapper for positioning
+        wrapper.open_management_btn = open_management_btn
+        
+        # Center the button
+        layout.addStretch()
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        button_layout.addWidget(open_management_btn)
+        button_layout.addStretch()
+        layout.addLayout(button_layout)
+        layout.addStretch()
+        
+        return wrapper
+    
+    def open_management_window(self):
+        """Open the management window positioned near the triggering button"""
+        if not hasattr(self, 'management_window') or not self.management_window:
+            self.management_window = ManagementWindow(self)
+        
+        # Get the management button position
+        management_widget = self.management_widget
+        if hasattr(management_widget, 'open_management_btn'):
+            button = management_widget.open_management_btn
+            # Get button's global position
+            button_pos = button.mapToGlobal(button.rect().topLeft())
+            # Position window near the button (offset to the right and slightly down)
+            window_x = button_pos.x() + button.width() + 10
+            window_y = button_pos.y()
+            
+            # Ensure window stays within screen bounds
+            screen = self.screen().availableGeometry()
+            if window_x + self.management_window.width() > screen.right():
+                window_x = button_pos.x() - self.management_window.width() - 10
+            if window_y + self.management_window.height() > screen.bottom():
+                window_y = screen.bottom() - self.management_window.height()
+            
+            self.management_window.move(window_x, window_y)
+        
+        self.management_window.show()
+        self.management_window.raise_()
+        self.management_window.activateWindow()
     
     def logout(self):
         """Handle logout functionality"""

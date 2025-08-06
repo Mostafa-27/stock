@@ -150,12 +150,48 @@ def create_tables():
                         )
                         END"""
         
+        # Create suppliers table
+        suppliers_table = """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='suppliers' AND xtype='U')
+                             BEGIN
+                             CREATE TABLE suppliers (
+                             id INT IDENTITY(1,1) PRIMARY KEY,
+                             supplier_name NVARCHAR(255) NOT NULL UNIQUE,
+                             contact_person NVARCHAR(255),
+                             phone NVARCHAR(50),
+                             email NVARCHAR(255),
+                             address NTEXT,
+                             payment_terms NVARCHAR(100),
+                             notes NTEXT,
+                             date_added DATETIME NOT NULL DEFAULT GETDATE(),
+                             is_active BIT DEFAULT 1
+                         )
+                         END"""
+        
+        # Create branches table
+        branches_table = """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='branches' AND xtype='U')
+                            BEGIN
+                            CREATE TABLE branches (
+                            id INT IDENTITY(1,1) PRIMARY KEY,
+                            branch_name NVARCHAR(255) NOT NULL UNIQUE,
+                            branch_code NVARCHAR(50),
+                            manager_name NVARCHAR(255),
+                            phone NVARCHAR(50),
+                            address NTEXT,
+                            opening_date DATETIME,
+                            notes NTEXT,
+                            date_added DATETIME NOT NULL DEFAULT GETDATE(),
+                            is_active BIT DEFAULT 1
+                        )
+                        END"""
+        
         # Execute table creation statements
         cursor.execute(items_table)
         cursor.execute(extractions_table)
         cursor.execute(invoices_table)
         cursor.execute(users_table)
         cursor.execute(settings_table)
+        cursor.execute(suppliers_table)
+        cursor.execute(branches_table)
         
         # No need to add is_admin column since table now uses role column
         

@@ -199,15 +199,10 @@ class Invoice:
     
     @staticmethod
     def get_all_suppliers():
-        """Get a list of all suppliers with invoices"""
+        """Get a list of all suppliers from the suppliers table"""
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("SELECT DISTINCT supplier_name FROM invoices ORDER BY supplier_name")
-            return [row[0] for row in cursor.fetchall()]
-        except pyodbc.Error as e:
+            from models.supplier import Supplier
+            return Supplier.get_supplier_names()
+        except Exception as e:
             print(f"Database error: {e}")
             return []
-        finally:
-            if 'conn' in locals():
-                conn.close()

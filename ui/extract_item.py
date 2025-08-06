@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt, Signal
 
 from models.item import Item
 from models.extraction import Extraction
+from models.branch import Branch
 
 class ExtractItemWidget(QWidget):
     # Signal to notify when an extraction is completed successfully
@@ -21,14 +22,14 @@ class ExtractItemWidget(QWidget):
         
         # Create form fields
         self.item_combo = QComboBox()
-        self.branch_name = QLineEdit()
+        self.branch_combo = QComboBox()
         self.quantity = QSpinBox()
         self.quantity.setMinimum(1)
         self.quantity.setMaximum(10000)
         
         # Add fields to form layout
         form_layout.addRow("Item *:", self.item_combo)
-        form_layout.addRow("Branch Name *:", self.branch_name)
+        form_layout.addRow("Branch *:", self.branch_combo)
         form_layout.addRow("Quantity to Extract *:", self.quantity)
         
         # Create available quantity label
@@ -55,9 +56,10 @@ class ExtractItemWidget(QWidget):
         self.clear_button.clicked.connect(self.clear_form)
         self.item_combo.currentIndexChanged.connect(self.update_available_quantity)
         
-        # Initialize items
+        # Initialize items and branches
         self.items = []
         self.refresh_items()
+        self.load_branches()
     
     def refresh_items(self):
         # Get all items
@@ -92,13 +94,13 @@ class ExtractItemWidget(QWidget):
             QMessageBox.warning(self, "Validation Error", "No items available for extraction")
             return
         
-        if not self.branch_name.text():
-            QMessageBox.warning(self, "Validation Error", "Branch Name is required")
+        if self.branch_combo.currentText() == "-- اختر الفرع --":
+            QMessageBox.warning(self, "Validation Error", "Please select a branch")
             return
         
         # Get form values
         item_id = self.item_combo.currentData()
-        branch_name = self.branch_name.text()
+        branch_name = self.branch_combo.currentText()
         quantity = self.quantity.value()
         
         # Extract item
@@ -113,6 +115,16 @@ class ExtractItemWidget(QWidget):
         else:
             QMessageBox.warning(self, "Error", message)
     
+    def load_branches(self):
+        """Load branches from the new branches table"""
+        try:
+            branch_names = Branch.get_branch_names()
+            self.branch_combo.clear()
+            self.branch_combo.addItem("-- اختر الفرع --")
+            self.branch_combo.addItems(branch_names)
+        except Exception as e:
+            QMessageBox.warning(self, "خطأ", f"فشل في تحميل الفروع: {e}")
+    
     def clear_form(self):
-        self.branch_name.clear()
+        self.branch_combo.setCurrentIndex(0)  # Reset to "-- اختر الفرع --"
         self.quantity.setValue(1)
