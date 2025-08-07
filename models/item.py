@@ -4,18 +4,19 @@ from database import get_db_connection
 from models.invoice import Invoice
 
 class Item:
-    def __init__(self, id=None, item_name="", quantity=0, price_per_unit=0.0, 
+    def __init__(self, id=None, item_name="", quantity=0, quantity_type="unit", price_per_unit=0.0, 
                  invoice_number="", supplier_name="", date_added=None):
         self.id = id
         self.item_name = item_name
         self.quantity = quantity
+        self.quantity_type = quantity_type
         self.price_per_unit = price_per_unit
         self.invoice_number = invoice_number
         self.supplier_name = supplier_name
         self.date_added = date_added if date_added else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     @staticmethod
-    def add_item(item_name, quantity, price_per_unit, invoice_number, supplier_name=None, payment_status=None):
+    def add_item(item_name, quantity, quantity_type, price_per_unit, invoice_number, supplier_name=None, payment_status=None):
         """Add a new item to the database and create/update invoice"""
         try:
             conn = get_db_connection()
@@ -24,11 +25,11 @@ class Item:
             
             # Insert item
             sql = '''INSERT INTO items
-                    (item_name, quantity, price_per_unit, invoice_number, supplier_name, date_added)
-                    VALUES (?, ?, ?, ?, ?, ?)'''
+                    (item_name, quantity, quantity_type, price_per_unit, invoice_number, supplier_name, date_added)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)'''
             
             print(f"Executing SQL: {sql}")
-            cursor.execute(sql, (item_name, quantity, price_per_unit, invoice_number, supplier_name, date_added))
+            cursor.execute(sql, (item_name, quantity, quantity_type, price_per_unit, invoice_number, supplier_name, date_added))
             
             # Get the last inserted ID
             cursor.execute("SELECT SCOPE_IDENTITY()")
@@ -117,15 +118,29 @@ class Item:
             rows = cur.fetchall()
             
             for row in rows:
-                item = Item(
-                    id=row[0],
-                    item_name=row[1],
-                    quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
-                    price_per_unit=float(row[3]) if row[3] is not None else 0.0,
-                    invoice_number=row[4],
-                    supplier_name=row[5],
-                    date_added=row[6]
-                )
+                # Handle both old and new table structure
+                if len(row) >= 8:  # New structure with quantity_type
+                    item = Item(
+                        id=row[0],
+                        item_name=row[1],
+                        quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
+                        quantity_type=row[3] if row[3] else "unit",
+                        price_per_unit=float(row[4]) if row[4] is not None else 0.0,
+                        invoice_number=row[5],
+                        supplier_name=row[6],
+                        date_added=row[7]
+                    )
+                else:  # Old structure without quantity_type
+                    item = Item(
+                        id=row[0],
+                        item_name=row[1],
+                        quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
+                        quantity_type="unit",
+                        price_per_unit=float(row[3]) if row[3] is not None else 0.0,
+                        invoice_number=row[4],
+                        supplier_name=row[5],
+                        date_added=row[6]
+                    )
                 items.append(item)
         except pyodbc.Error as e:
             print(f"Database error: {e}")
@@ -145,15 +160,29 @@ class Item:
             row = cur.fetchone()
             
             if row:
-                item = Item(
-                    id=row[0],
-                    item_name=row[1],
-                    quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
-                    price_per_unit=float(row[3]) if row[3] is not None else 0.0,
-                    invoice_number=row[4],
-                    supplier_name=row[5],
-                    date_added=row[6]
-                )
+                # Handle both old and new table structure
+                if len(row) >= 8:  # New structure with quantity_type
+                    item = Item(
+                        id=row[0],
+                        item_name=row[1],
+                        quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
+                        quantity_type=row[3] if row[3] else "unit",
+                        price_per_unit=float(row[4]) if row[4] is not None else 0.0,
+                        invoice_number=row[5],
+                        supplier_name=row[6],
+                        date_added=row[7]
+                    )
+                else:  # Old structure without quantity_type
+                    item = Item(
+                        id=row[0],
+                        item_name=row[1],
+                        quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
+                        quantity_type="unit",
+                        price_per_unit=float(row[3]) if row[3] is not None else 0.0,
+                        invoice_number=row[4],
+                        supplier_name=row[5],
+                        date_added=row[6]
+                    )
                 return item
         except pyodbc.Error as e:
             print(f"Database error: {e}")
@@ -192,15 +221,29 @@ class Item:
             rows = cur.fetchall()
             
             for row in rows:
-                item = Item(
-                    id=row[0],
-                    item_name=row[1],
-                    quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
-                    price_per_unit=float(row[3]) if row[3] is not None else 0.0,
-                    invoice_number=row[4],
-                    supplier_name=row[5],
-                    date_added=row[6]
-                )
+                # Handle both old and new table structure
+                if len(row) >= 8:  # New structure with quantity_type
+                    item = Item(
+                        id=row[0],
+                        item_name=row[1],
+                        quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
+                        quantity_type=row[3] if row[3] else "unit",
+                        price_per_unit=float(row[4]) if row[4] is not None else 0.0,
+                        invoice_number=row[5],
+                        supplier_name=row[6],
+                        date_added=row[7]
+                    )
+                else:  # Old structure without quantity_type
+                    item = Item(
+                        id=row[0],
+                        item_name=row[1],
+                        quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
+                        quantity_type="unit",
+                        price_per_unit=float(row[3]) if row[3] is not None else 0.0,
+                        invoice_number=row[4],
+                        supplier_name=row[5],
+                        date_added=row[6]
+                    )
                 items.append(item)
         except pyodbc.Error as e:
             print(f"Database error: {e}")
@@ -222,15 +265,29 @@ class Item:
             rows = cur.fetchall()
             
             for row in rows:
-                item = Item(
-                    id=row[0],
-                    item_name=row[1],
-                    quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
-                    price_per_unit=float(row[3]) if row[3] is not None else 0.0,
-                    invoice_number=row[4],
-                    supplier_name=row[5],
-                    date_added=row[6]
-                )
+                # Handle both old and new table structure
+                if len(row) >= 8:  # New structure with quantity_type
+                    item = Item(
+                        id=row[0],
+                        item_name=row[1],
+                        quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
+                        quantity_type=row[3] if row[3] else "unit",
+                        price_per_unit=float(row[4]) if row[4] is not None else 0.0,
+                        invoice_number=row[5],
+                        supplier_name=row[6],
+                        date_added=row[7]
+                    )
+                else:  # Old structure without quantity_type
+                    item = Item(
+                        id=row[0],
+                        item_name=row[1],
+                        quantity=int(row[2]) if row[2] is not None and str(row[2]).isdigit() else 0,
+                        quantity_type="unit",
+                        price_per_unit=float(row[3]) if row[3] is not None else 0.0,
+                        invoice_number=row[4],
+                        supplier_name=row[5],
+                        date_added=row[6]
+                    )
                 items.append(item)
         except pyodbc.Error as e:
             print(f"Database error: {e}")

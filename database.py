@@ -108,6 +108,27 @@ def migrate_extractions_table(cursor):
     except Exception as e:
         print(f"Migration error: {e}")
 
+def migrate_items_quantity_type(cursor):
+    """Add quantity_type column to items table"""
+    try:
+        # Check if quantity_type column exists
+        cursor.execute("""
+            SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_NAME = 'items' AND COLUMN_NAME = 'quantity_type'
+        """)
+        
+        if cursor.fetchone()[0] == 0:
+            # Add quantity_type column with default value 'unit'
+            cursor.execute("ALTER TABLE items ADD quantity_type NVARCHAR(50) DEFAULT 'unit'")
+            
+            # Update existing records to have 'unit' as default
+            cursor.execute("UPDATE items SET quantity_type = 'unit' WHERE quantity_type IS NULL")
+            
+            print("Items table migrated to include quantity_type column")
+            
+    except Exception as e:
+        print(f"Migration error: {e}")
+
 def create_tables():
     """Create the necessary tables if they don't exist"""
     # Ensure database exists before creating tables
@@ -123,6 +144,7 @@ def create_tables():
                             id INT IDENTITY(1,1) PRIMARY KEY,
                             item_name NVARCHAR(255) NOT NULL,
                             quantity INT NOT NULL,
+                            quantity_type NVARCHAR(50) DEFAULT 'unit',
                             price_per_unit DECIMAL(10,2) NOT NULL,
                             invoice_number NVARCHAR(100) NOT NULL,
                             supplier_name NVARCHAR(255),
@@ -222,17 +244,20 @@ def create_tables():
                         )
                         END"""
         
-        # Execute table creation statements
+        # Execute table creation statements in correct order (dependencies first)
+        cursor.execute(suppliers_table)
+        cursor.execute(branches_table)
         cursor.execute(items_table)
         cursor.execute(extractions_table)
         cursor.execute(invoices_table)
         cursor.execute(users_table)
         cursor.execute(settings_table)
-        cursor.execute(suppliers_table)
-        cursor.execute(branches_table)
         
         # Migrate existing extractions table to use branch_id
         migrate_extractions_table(cursor)
+        
+        # Migrate items table to include quantity_type
+        migrate_items_quantity_type(cursor)
         
         # No need to add is_admin column since table now uses role column
         

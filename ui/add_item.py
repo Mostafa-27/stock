@@ -29,6 +29,11 @@ class AddItemWidget(QWidget):
         self.quantity.setMinimum(1)
         self.quantity.setMaximum(10000)
         
+        # Quantity type dropdown
+        self.quantity_type = QComboBox()
+        self.quantity_type.addItems(['unit', 'kg', 'liter', 'gram', 'meter', 'box', 'piece', 'ton'])
+        self.quantity_type.setEditable(True)  # Allow custom types
+        
         self.price = QDoubleSpinBox()
         self.price.setMinimum(0.01)
         self.price.setMaximum(1000000.00)
@@ -58,6 +63,7 @@ class AddItemWidget(QWidget):
         form_layout.addRow("Invoice Number *:", self.invoice_number)
         form_layout.addRow("Item Name *:", self.item_name)
         form_layout.addRow("Quantity *:", self.quantity)
+        form_layout.addRow("Quantity Type:", self.quantity_type)
         form_layout.addRow("Price per Unit *:", self.price)
         form_layout.addRow("Supplier *:", self.supplier_combo)
         form_layout.addRow("Date:", self.date)
@@ -119,6 +125,7 @@ class AddItemWidget(QWidget):
         invoice_number = self.invoice_number.text()
         item_name = self.item_name.text()
         quantity = self.quantity.value()
+        quantity_type = self.quantity_type.currentText()
         price = self.price.value()
         supplier_name = self.supplier_combo.currentText()
         payment_status = self.payment_status.currentText()
@@ -132,7 +139,7 @@ class AddItemWidget(QWidget):
                 return
         
         # Add item to database
-        item_id = Item.add_item(item_name, quantity, price, invoice_number, supplier_name, payment_status)
+        item_id = Item.add_item(item_name, quantity, quantity_type, price, invoice_number, supplier_name, payment_status)
         
         if item_id:
             # Update paid amount if needed
@@ -164,6 +171,7 @@ class AddItemWidget(QWidget):
         self.invoice_number.clear()
         self.item_name.clear()
         self.quantity.setValue(1)
+        self.quantity_type.setCurrentIndex(0)  # Reset to first item (unit)
         self.price.setValue(0.01)
         self.supplier_combo.setCurrentIndex(0)  # Reset to "-- اختر المورد --"
         self.date.setDate(QDate.currentDate())

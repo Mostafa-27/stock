@@ -28,8 +28,20 @@ class Invoice:
             
             cursor.execute(sql, (invoice_number, supplier_name, total_amount, payment_status, 
                                 paid_amount, issue_date, due_date, notes))
+            
+            # Get the last inserted ID using SCOPE_IDENTITY()
+            cursor.execute("SELECT SCOPE_IDENTITY()")
+            result = cursor.fetchone()
+            if result and result[0] is not None:
+                invoice_id = int(result[0])
+            else:
+                # Fallback: get the max ID from invoices table
+                cursor.execute("SELECT MAX(id) FROM invoices WHERE invoice_number = ?", (invoice_number,))
+                result = cursor.fetchone()
+                invoice_id = int(result[0]) if result and result[0] is not None else 1
+            
             conn.commit()
-            return cursor.lastrowid
+            return invoice_id
         except pyodbc.Error as e:
             print(f"Database error: {e}")
             return None
@@ -108,15 +120,29 @@ class Invoice:
             )
             items = []
             for row in cursor.fetchall():
-                items.append({
-                    'id': row[0],
-                    'item_name': row[1],
-                    'quantity': row[2],
-                    'price_per_unit': row[3],
-                    'invoice_number': row[4],
-                    'supplier_name': row[5],
-                    'date_added': row[6]
-                })
+                # Handle both old and new table structure
+                if len(row) >= 8:  # New structure with quantity_type
+                    items.append({
+                        'id': row[0],
+                        'item_name': row[1],
+                        'quantity': row[2],
+                        'quantity_type': row[3] if row[3] else 'unit',
+                        'price_per_unit': row[4],
+                        'invoice_number': row[5],
+                        'supplier_name': row[6],
+                        'date_added': row[7]
+                    })
+                else:  # Old structure without quantity_type
+                    items.append({
+                        'id': row[0],
+                        'item_name': row[1],
+                        'quantity': row[2],
+                        'quantity_type': 'unit',
+                        'price_per_unit': row[3],
+                        'invoice_number': row[4],
+                        'supplier_name': row[5],
+                        'date_added': row[6]
+                    })
             return items
         except pyodbc.Error as e:
             print(f"Database error: {e}")
