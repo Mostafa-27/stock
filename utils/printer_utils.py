@@ -124,20 +124,20 @@ def generate_receipt_content(invoice_data, items_data, logo_path=None, is_histor
     painter.setFont(normal_font)
     
     # Draw document details
-    painter.drawText(x, y, f"Reference #: {invoice_data['invoice_number']}")
+    painter.drawText(x, y, f"Reference #: {str(invoice_data['invoice_number'])}")
     y += line_height
-    painter.drawText(x, y, f"Date: {invoice_data['issue_date']}")
+    painter.drawText(x, y, f"Date: {str(invoice_data['issue_date'])}")
     y += line_height
     
     if is_history:
-        painter.drawText(x, y, f"Report Type: {invoice_data['supplier_name']}")
+        painter.drawText(x, y, f"Report Type: {str(invoice_data['supplier_name'])}")
     else:
-        painter.drawText(x, y, f"Supplier: {invoice_data['supplier_name']}")
+        painter.drawText(x, y, f"Supplier: {str(invoice_data['supplier_name'])}")
     y += line_height
     
     # Add notes if available
     if 'notes' in invoice_data and invoice_data['notes']:
-        painter.drawText(x, y, f"Notes: {invoice_data['notes']}")
+        painter.drawText(x, y, f"Notes: {str(invoice_data['notes'])}")
         y += line_height
     
     y += line_height
@@ -169,14 +169,17 @@ def generate_receipt_content(invoice_data, items_data, logo_path=None, is_histor
             # For history report
             painter.drawText(x, y, item['item_name'])
             painter.drawText(x + 250, y, str(item['quantity']))
-            painter.drawText(x + 350, y, item['date_added'])
-            painter.drawText(x + 450, y, item['supplier_name'])  # Using supplier_name field for user/details
+            painter.drawText(x + 350, y, str(item['date_added']))
+            painter.drawText(x + 450, y, str(item['supplier_name']))  # Using supplier_name field for user/details
         else:
             # For regular invoice
-            painter.drawText(x, y, item['item_name'])
+            painter.drawText(x, y, str(item['item_name']))
             painter.drawText(x + 200, y, str(item['quantity']))
-            painter.drawText(x + 300, y, f"${item['price_per_unit']:.2f}")
-            total = item['quantity'] * item['price_per_unit']
+            # Convert to float to ensure proper formatting
+            price_per_unit = float(item['price_per_unit']) if item['price_per_unit'] is not None else 0.0
+            quantity = int(item['quantity']) if item['quantity'] is not None else 0
+            painter.drawText(x + 300, y, f"${price_per_unit:.2f}")
+            total = quantity * price_per_unit
             painter.drawText(x + 400, y, f"${total:.2f}")
         y += line_height
         
@@ -195,19 +198,23 @@ def generate_receipt_content(invoice_data, items_data, logo_path=None, is_histor
     if not is_history:
         # Draw total
         painter.drawText(x + 300, y, "Total:")
-        painter.drawText(x + 400, y, f"${invoice_data['total_amount']:.2f}")
+        # Convert to float to ensure proper formatting
+        total_amount = float(invoice_data['total_amount']) if invoice_data['total_amount'] is not None else 0.0
+        painter.drawText(x + 400, y, f"${total_amount:.2f}")
         y += line_height
         
         # Draw payment status
         painter.drawText(x + 300, y, "Status:")
-        painter.drawText(x + 400, y, invoice_data['payment_status'])
+        painter.drawText(x + 400, y, str(invoice_data['payment_status']))
         
         if invoice_data['payment_status'] == 'Partially Paid':
             y += line_height
             painter.drawText(x + 300, y, "Paid:")
-            painter.drawText(x + 400, y, f"${invoice_data['paid_amount']:.2f}")
+            # Convert to float to ensure proper formatting
+            paid_amount = float(invoice_data['paid_amount']) if invoice_data['paid_amount'] is not None else 0.0
+            painter.drawText(x + 400, y, f"${paid_amount:.2f}")
             y += line_height
-            remaining = invoice_data['total_amount'] - invoice_data['paid_amount']
+            remaining = total_amount - paid_amount
             painter.drawText(x + 300, y, "Remaining:")
             painter.drawText(x + 400, y, f"${remaining:.2f}")
     
@@ -242,7 +249,7 @@ def show_print_dialog(parent, invoice_data, items_data, is_history=False):
     if is_history:
         printer.setDocName("History Operations Report")
     else:
-        printer.setDocName(f"Invoice {invoice_data['invoice_number']}")
+        printer.setDocName(f"Invoice {str(invoice_data['invoice_number'])}")
     
     if dialog.exec() == QPrintDialog.Accepted:
         # Generate receipt content
