@@ -13,12 +13,16 @@ class Branch:
             
             sql = '''INSERT INTO branches
                     (branch_name, branch_code, manager_name, phone, address, opening_date, notes)
+                    OUTPUT INSERTED.id
                     VALUES (?, ?, ?, ?, ?, ?, ?)'''
             
             cursor.execute(sql, (branch_name, branch_code, manager_name, phone, 
                                 address, opening_date, notes))
+            
+            # Get the inserted ID
+            inserted_id = cursor.fetchone()[0]
             conn.commit()
-            return cursor.lastrowid
+            return inserted_id
         except pyodbc.Error as e:
             print(f"Database error: {e}")
             return None

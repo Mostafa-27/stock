@@ -13,12 +13,16 @@ class Supplier:
             
             sql = '''INSERT INTO suppliers
                     (supplier_name, contact_person, phone, email, address, payment_terms, notes)
+                    OUTPUT INSERTED.id
                     VALUES (?, ?, ?, ?, ?, ?, ?)'''
             
             cursor.execute(sql, (supplier_name, contact_person, phone, email, 
                                 address, payment_terms, notes))
+            
+            # Get the inserted ID
+            inserted_id = cursor.fetchone()[0]
             conn.commit()
-            return cursor.lastrowid
+            return inserted_id
         except pyodbc.Error as e:
             print(f"Database error: {e}")
             return None
