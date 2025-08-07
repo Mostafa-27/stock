@@ -72,6 +72,23 @@ def create_connection():
         print(f"Database error: {e}")
         return None
 
+def migrate_extractions_extracted_by(cursor):
+    """Add extracted_by column to extractions table"""
+    try:
+        # Check if extracted_by column exists
+        cursor.execute("""
+            SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_NAME = 'extractions' AND COLUMN_NAME = 'extracted_by'
+        """)
+        
+        if cursor.fetchone()[0] == 0:
+            # Add extracted_by column
+            cursor.execute("ALTER TABLE extractions ADD extracted_by NVARCHAR(255)")
+            print("Extractions table migrated to include extracted_by column")
+            
+    except Exception as e:
+        print(f"Migration error: {e}")
+
 def migrate_extractions_table(cursor):
     """Migrate extractions table to use branch_id instead of branch_name"""
     try:
@@ -161,6 +178,7 @@ def create_tables():
                                 branch_id INT NOT NULL,
                                 branch_name NVARCHAR(255),
                                 quantity_extracted INT NOT NULL,
+                                extracted_by NVARCHAR(255),
                                 date_extracted DATETIME NOT NULL,
                                 FOREIGN KEY (item_id) REFERENCES items (id),
                                 FOREIGN KEY (branch_id) REFERENCES branches (id)
@@ -255,6 +273,9 @@ def create_tables():
         
         # Migrate existing extractions table to use branch_id
         migrate_extractions_table(cursor)
+        
+        # Migrate extractions table to include extracted_by
+        migrate_extractions_extracted_by(cursor)
         
         # Migrate items table to include quantity_type
         migrate_items_quantity_type(cursor)

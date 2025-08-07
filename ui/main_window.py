@@ -99,7 +99,7 @@ class MainWindow(QMainWindow):
         """)
         self.logout_btn.clicked.connect(self.logout)
         
-        user_section_layout.addWidget(user_info)
+        # user_section_layout.addWidget(user_info)
         user_section_layout.addWidget(self.logout_btn)
         
         # Current date and time
@@ -669,40 +669,51 @@ class MainWindow(QMainWindow):
             except pyodbc.Error as e:
                 QMessageBox.warning(self, "Printing Error", f"Error printing invoice: {e}")
     
-    def handle_item_extracted(self, item_id, branch_name, quantity):
-        """Handle auto-printing when an item is extracted"""
+    def handle_item_extracted(self, items_list, branch_name, extracted_by):
+        """Handle auto-printing when items are extracted"""
         if Settings.get_setting('auto_print', True):
             try:
                 # Get item data from database
                 from models.item import Item
-                item = Item.get_item_by_id(item_id)
                 
-                if item:
-                    # Create a simplified invoice-like structure for extraction
-                    extraction_data = {
-                        'invoice_number': f"EXT-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}",
-                        'supplier_name': f"Extraction to {branch_name}",
-                        'total_amount': item.price_per_unit * quantity,
-                        'payment_status': 'Extraction',
-                        'paid_amount': 0,
-                        'issue_date': datetime.datetime.now().strftime('%Y-%m-%d'),
-                        'due_date': None,
-                        'notes': f"Item extracted from inventory to {branch_name}"
-                    }
-                    
-                    # Create a single item entry
-                    items_data = [{
-                        'id': item.id,
-                        'item_name': item.item_name,
-                        'quantity': quantity,
-                        'price_per_unit': item.price_per_unit,
-                        'invoice_number': extraction_data['invoice_number'],
-                        'supplier_name': extraction_data['supplier_name'],
-                        'date_added': datetime.datetime.now().strftime('%Y-%m-%d')
-                    }]
-                    
-                    # Print the extraction receipt
-                    print_invoice(extraction_data, items_data)
+                # Create a simplified invoice-like structure for extraction
+                extraction_data = {
+                    'invoice_number': f"EXT-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}",
+                    'supplier_name': f"Extraction to {branch_name}",
+                    'total_amount': 0,  # Will calculate below
+                    'payment_status': 'Extraction',
+                    'paid_amount': 0,
+                    'issue_date': datetime.datetime.now().strftime('%Y-%m-%d'),
+                    'due_date': None,
+                    'notes': f"Items extracted from inventory to {branch_name} by {extracted_by}"
+                }
+                
+                # Create items data and calculate total
+                items_data = []
+                total_amount = 0
+                
+                for item_data in items_list:
+                    # Get full item details
+                    item = Item.get_item_by_id(item_data['item_id'])
+                    if item:
+                        quantity = item_data['quantity']
+                        item_total = item.price_per_unit * quantity
+                        total_amount += item_total
+                        
+                        items_data.append({
+                            'id': item.id,
+                            'item_name': item.item_name,
+                            'quantity': quantity,
+                            'price_per_unit': item.price_per_unit,
+                            'invoice_number': extraction_data['invoice_number'],
+                            'supplier_name': extraction_data['supplier_name'],
+                            'date_added': datetime.datetime.now().strftime('%Y-%m-%d')
+                        })
+                
+                extraction_data['total_amount'] = total_amount
+                
+                # Print the extraction receipt
+                print_invoice(extraction_data, items_data)
             except Exception as e:
                 QMessageBox.warning(self, "Printing Error", f"Error printing extraction receipt: {e}")
     
