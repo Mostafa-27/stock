@@ -222,7 +222,7 @@ class PizzaMainWidget(QWidget):
         discount_input_layout = QHBoxLayout()
         self.discount_input = QLineEdit()
         discount_percent_btn = QPushButton("%")
-        discount_dollar_btn = QPushButton("$")
+        discount_dollar_btn = QPushButton("£")
         discount_input_layout.addWidget(self.discount_input)
         discount_input_layout.addWidget(discount_percent_btn)
         discount_input_layout.addWidget(discount_dollar_btn)

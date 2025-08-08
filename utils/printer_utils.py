@@ -178,9 +178,9 @@ def generate_receipt_content(invoice_data, items_data, logo_path=None, is_histor
             # Convert to float to ensure proper formatting
             price_per_unit = float(item['price_per_unit']) if item['price_per_unit'] is not None else 0.0
             quantity = int(item['quantity']) if item['quantity'] is not None else 0
-            painter.drawText(x + 300, y, f"${price_per_unit:.2f}")
+            painter.drawText(x + 300, y, f"£{price_per_unit:.2f}")
             total = quantity * price_per_unit
-            painter.drawText(x + 400, y, f"${total:.2f}")
+            painter.drawText(x + 400, y, f"£{total:.2f}")
         y += line_height
         
         # Check if we need to start a new page (simple pagination)
@@ -200,7 +200,7 @@ def generate_receipt_content(invoice_data, items_data, logo_path=None, is_histor
         painter.drawText(x + 300, y, "Total:")
         # Convert to float to ensure proper formatting
         total_amount = float(invoice_data['total_amount']) if invoice_data['total_amount'] is not None else 0.0
-        painter.drawText(x + 400, y, f"${total_amount:.2f}")
+        painter.drawText(x + 400, y, f"£{total_amount:.2f}")
         y += line_height
         
         # Draw payment status
@@ -212,11 +212,11 @@ def generate_receipt_content(invoice_data, items_data, logo_path=None, is_histor
             painter.drawText(x + 300, y, "Paid:")
             # Convert to float to ensure proper formatting
             paid_amount = float(invoice_data['paid_amount']) if invoice_data['paid_amount'] is not None else 0.0
-            painter.drawText(x + 400, y, f"${paid_amount:.2f}")
+            painter.drawText(x + 400, y, f"£{paid_amount:.2f}")
             y += line_height
             remaining = total_amount - paid_amount
             painter.drawText(x + 300, y, "Remaining:")
-            painter.drawText(x + 400, y, f"${remaining:.2f}")
+            painter.drawText(x + 400, y, f"£{remaining:.2f}")
     
     # Draw footer
     y += line_height * 3
