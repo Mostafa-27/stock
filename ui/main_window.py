@@ -29,7 +29,7 @@ class MainWindow(QMainWindow):
         # Store user data
         self.user_data = user_data or {'id': 0, 'username': 'guest', 'is_admin': False}
         
-        self.setWindowTitle(f"Pizza Melano - {self.user_data['username']}")
+        self.setWindowTitle(f"بيتزا ميلانو - {self.user_data['username']}")
         self.setMinimumSize(1200, 800)
         self.setWindowFlags(Qt.FramelessWindowHint)
         
@@ -132,7 +132,7 @@ class MainWindow(QMainWindow):
             logo_label.setPixmap(scaled_pixmap)
         else:
             # Fallback text if image not found
-            logo_label.setText("PIZZA\nMELANO")
+            logo_label.setText("بيتزا\nميلانو")
             logo_label.setStyleSheet("""
                 QLabel {
                     color: #e74c3c;
@@ -345,7 +345,7 @@ class MainWindow(QMainWindow):
         title_layout.setSpacing(0)
         
         # Window title
-        title_label = QLabel(f"Pizza Melano - {self.user_data['username']}")
+        title_label = QLabel(f"بيتزا ميلانو - {self.user_data['username']}")
         title_label.setStyleSheet("""
             QLabel {
                 color: white;
@@ -379,13 +379,13 @@ class MainWindow(QMainWindow):
         minimize_btn = QPushButton("−")
         minimize_btn.setStyleSheet(button_style)
         minimize_btn.clicked.connect(self.showMinimized)
-        minimize_btn.setToolTip("Minimize")
+        minimize_btn.setToolTip("تصغير")
         
         # Maximize/Restore button
         self.maximize_btn = QPushButton("□")
         self.maximize_btn.setStyleSheet(button_style)
         self.maximize_btn.clicked.connect(self.toggle_maximize)
-        self.maximize_btn.setToolTip("Maximize")
+        self.maximize_btn.setToolTip("تكبير")
         
         # Close button
         close_btn = QPushButton("×")
@@ -406,7 +406,7 @@ class MainWindow(QMainWindow):
             }
         """)
         close_btn.clicked.connect(self.close)
-        close_btn.setToolTip("Close")
+        close_btn.setToolTip("إغلاق")
         
         title_layout.addWidget(minimize_btn)
         title_layout.addWidget(self.maximize_btn)
@@ -423,11 +423,11 @@ class MainWindow(QMainWindow):
         if self.isMaximized():
             self.showNormal()
             self.maximize_btn.setText("□")
-            self.maximize_btn.setToolTip("Maximize")
+            self.maximize_btn.setToolTip("تكبير")
         else:
             self.showMaximized()
             self.maximize_btn.setText("❐")
-            self.maximize_btn.setToolTip("Restore")
+            self.maximize_btn.setToolTip("استعادة")
     
     def title_bar_mouse_press(self, event):
         """Handle mouse press on title bar for dragging"""
@@ -471,7 +471,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
         
         # Add title label
-        title_label = QLabel("History Operations")
+        title_label = QLabel("عمليات التاريخ")
         title_label.setStyleSheet("""
             font-size: 18px;
             font-weight: bold;
@@ -484,7 +484,7 @@ class MainWindow(QMainWindow):
         self.history_table = QTableWidget()
         self.history_table.setColumnCount(5)
         self.history_table.setHorizontalHeaderLabels([
-            "Date", "Item Name", "Operation Type", "Quantity", "Details"
+            "التاريخ", "اسم المنتج", "نوع العملية", "الكمية", "التفاصيل"
         ])
         self.history_table.setAlternatingRowColors(True)  # Alternate row colors
         
@@ -499,11 +499,11 @@ class MainWindow(QMainWindow):
         buttons_layout = QHBoxLayout()
         
         # Add refresh button
-        refresh_btn = QPushButton("🔄 Refresh")
+        refresh_btn = QPushButton("🔄 تحديث")
         refresh_btn.clicked.connect(self.refresh_history)
         
         # Add print button for history operations
-        print_btn = QPushButton("🖨️ Print History")
+        print_btn = QPushButton("🖨️ طباعة التاريخ")
         print_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
@@ -543,7 +543,7 @@ class MainWindow(QMainWindow):
                 rows.append(row_data)
             
             if not rows:
-                QMessageBox.information(self, "No Data", "There is no history data to print.")
+                QMessageBox.information(self, "لا توجد بيانات", "لا توجد بيانات تاريخ للطباعة.")
                 return
             
             # Create a simplified invoice-like structure for history
@@ -574,12 +574,12 @@ class MainWindow(QMainWindow):
             # Print the history report
             from utils.printer_utils import show_print_dialog
             if show_print_dialog(self, history_data, items_data, is_history=True):
-                QMessageBox.information(self, "Success", "History report sent to printer")
+                QMessageBox.information(self, "نجح", "تم إرسال تقرير التاريخ إلى الطابعة")
             else:
-                QMessageBox.warning(self, "Printing Cancelled", "Printing was cancelled or failed.")
+                QMessageBox.warning(self, "تم إلغاء الطباعة", "تم إلغاء الطباعة أو فشلت.")
                 
         except Exception as e:
-            QMessageBox.critical(self, "Printing Error", f"Error printing history report: {e}")
+            QMessageBox.critical(self, "خطأ في الطباعة", f"خطأ في طباعة تقرير التاريخ: {e}")
     
     def refresh_history(self):
         """Refresh the history operations table"""
@@ -738,12 +738,12 @@ class MainWindow(QMainWindow):
         invoices = Invoice.get_all_invoices()
         
         if not invoices:
-            QMessageBox.information(self, "No Invoices", "There are no invoices to print.")
+            QMessageBox.information(self, "لا توجد فواتير", "لا توجد فواتير للطباعة.")
             return
         
         # Create a dialog to select an invoice
         dialog = QDialog(self)
-        dialog.setWindowTitle("Select Invoice to Print")
+        dialog.setWindowTitle("اختر الفاتورة للطباعة")
         dialog.setMinimumWidth(400)
         
         layout = QVBoxLayout(dialog)
@@ -754,13 +754,13 @@ class MainWindow(QMainWindow):
             combo.addItem(f"{invoice['invoice_number']} - {invoice['supplier_name']}", 
                          invoice['invoice_number'])
         
-        layout.addWidget(QLabel("Select Invoice:"))
+        layout.addWidget(QLabel("اختر الفاتورة:"))
         layout.addWidget(combo)
         
         # Create buttons
         buttons = QHBoxLayout()
-        print_btn = QPushButton("Print")
-        cancel_btn = QPushButton("Cancel")
+        print_btn = QPushButton("طباعة")
+        cancel_btn = QPushButton("إلغاء")
         
         buttons.addWidget(print_btn)
         buttons.addWidget(cancel_btn)

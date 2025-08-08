@@ -30,20 +30,20 @@ class ExtractItemWidget(QWidget):
         layout = QVBoxLayout(scroll_widget)
         
         # Extraction Information Group
-        extraction_group = QGroupBox("Extraction Information")
+        extraction_group = QGroupBox("معلومات الاستخراج")
         extraction_layout = QFormLayout(extraction_group)
         
         # Branch selection
         self.branch_combo = QComboBox()
-        extraction_layout.addRow("Branch *:", self.branch_combo)
+        extraction_layout.addRow("الفرع *:", self.branch_combo)
         
         # Extracted by field
         self.extracted_by = QLineEdit()
-        self.extracted_by.setPlaceholderText("Enter name of person extracting items")
-        extraction_layout.addRow("Extracted By *:", self.extracted_by)
+        self.extracted_by.setPlaceholderText("أدخل اسم الشخص الذي يستخرج المنتجات")
+        extraction_layout.addRow("مستخرج بواسطة *:", self.extracted_by)
         
         # Item Selection Group
-        item_group = QGroupBox("Add Items to Extract")
+        item_group = QGroupBox("إضافة منتجات للاستخراج")
         item_layout = QFormLayout(item_group)
         
         # Create form fields
@@ -53,30 +53,30 @@ class ExtractItemWidget(QWidget):
         self.quantity.setMaximum(10000)
         
         # Add fields to form layout
-        item_layout.addRow("Item *:", self.item_combo)
-        item_layout.addRow("Quantity to Extract *:", self.quantity)
+        item_layout.addRow("المنتج *:", self.item_combo)
+        item_layout.addRow("الكمية للاستخراج *:", self.quantity)
         
         # Create available quantity label
-        self.available_label = QLabel("Available: 0")
-        item_layout.addRow("Stock Status:", self.available_label)
+        self.available_label = QLabel("متاح: 0")
+        item_layout.addRow("حالة المخزون:", self.available_label)
         
         # Add item button
-        self.add_item_button = QPushButton("Add Item to List")
+        self.add_item_button = QPushButton("إضافة منتج للقائمة")
         item_layout.addRow("", self.add_item_button)
         
         # Items List Table
-        list_group = QGroupBox("Items to Extract")
+        list_group = QGroupBox("المنتجات للاستخراج")
         list_layout = QVBoxLayout(list_group)
         
         self.items_table = QTableWidget()
         self.items_table.setColumnCount(4)
-        self.items_table.setHorizontalHeaderLabels(['Item Name', 'Current Stock', 'Quantity to Extract', 'Remaining'])
+        self.items_table.setHorizontalHeaderLabels(['اسم المنتج', 'المخزون الحالي', 'الكمية للاستخراج', 'المتبقي'])
         self.items_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         
         # Table buttons
         table_buttons_layout = QHBoxLayout()
-        self.remove_item_button = QPushButton("Remove Selected")
-        self.clear_all_button = QPushButton("Clear All")
+        self.remove_item_button = QPushButton("حذف المحدد")
+        self.clear_all_button = QPushButton("مسح الكل")
         
         table_buttons_layout.addWidget(self.remove_item_button)
         table_buttons_layout.addWidget(self.clear_all_button)
@@ -87,8 +87,8 @@ class ExtractItemWidget(QWidget):
         
         # Main Action Buttons
         button_layout = QHBoxLayout()
-        self.extract_button = QPushButton("Extract All Items")
-        self.clear_form_button = QPushButton("Clear Form")
+        self.extract_button = QPushButton("استخراج جميع المنتجات")
+        self.clear_form_button = QPushButton("مسح النموذج")
         
         self.extract_button.setStyleSheet("font-weight: bold; padding: 10px;")
         
@@ -133,7 +133,7 @@ class ExtractItemWidget(QWidget):
     
     def update_available_quantity(self):
         if self.item_combo.count() == 0:
-            self.available_label.setText("Available: 0")
+            self.available_label.setText("متاح: 0")
             return
         
         item_id = self.item_combo.currentData()
@@ -144,14 +144,14 @@ class ExtractItemWidget(QWidget):
                 allocated = sum(item_data['quantity'] for item_data in self.items_to_extract 
                               if item_data['item_id'] == item_id)
                 available = item.quantity - allocated
-                self.available_label.setText(f"Available: {available}")
+                self.available_label.setText(f"متاح: {available}")
                 self.quantity.setMaximum(max(1, available))
                 break
     
     def add_item_to_list(self):
         # Validate form
         if self.item_combo.count() == 0:
-            QMessageBox.warning(self, "Validation Error", "No items available for extraction")
+            QMessageBox.warning(self, "خطأ في التحقق", "لا توجد منتجات متاحة للاستخراج")
             return
         
         item_id = self.item_combo.currentData()
@@ -181,7 +181,7 @@ class ExtractItemWidget(QWidget):
         available = current_stock - allocated
         
         if quantity > available:
-            QMessageBox.warning(self, "Validation Error", f"Not enough stock available. Available: {available}")
+            QMessageBox.warning(self, "خطأ في التحقق", f"لا يوجد مخزون كافي متاح. المتاح: {available}")
             return
         
         # Add new item to the list
@@ -236,16 +236,16 @@ class ExtractItemWidget(QWidget):
     def extract_all_items(self):
         # Validate form
         if not self.items_to_extract:
-            QMessageBox.warning(self, "Validation Error", "No items to extract")
+            QMessageBox.warning(self, "خطأ في التحقق", "لا توجد منتجات للاستخراج")
             return
         
         if self.branch_combo.currentData() is None:
-            QMessageBox.warning(self, "Validation Error", "Please select a branch")
+            QMessageBox.warning(self, "خطأ في التحقق", "يرجى اختيار فرع")
             return
         
         extracted_by = self.extracted_by.text().strip()
         if not extracted_by:
-            QMessageBox.warning(self, "Validation Error", "Please enter who is extracting the items")
+            QMessageBox.warning(self, "خطأ في التحقق", "يرجى إدخال من يستخرج المنتجات")
             return
         
         # Get form values
@@ -268,13 +268,13 @@ class ExtractItemWidget(QWidget):
             success, message = Extraction.extract_multiple_items(items_list, branch_id, extracted_by)
         
         if success:
-            QMessageBox.information(self, "Success", message)
+            QMessageBox.information(self, "نجح", message)
             # Emit signal with extraction details for printing
             self.extraction_completed.emit(self.items_to_extract, branch_name, extracted_by)
             self.clear_form()
             self.refresh_items()
         else:
-            QMessageBox.warning(self, "Error", message)
+            QMessageBox.warning(self, "خطأ", message)
     
     def load_branches(self):
         """Load branches from the new branches table"""

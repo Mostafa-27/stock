@@ -16,7 +16,7 @@ def main():
     splash_pix = QPixmap(400, 200)
     splash_pix.fill(Qt.white)
     splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
-    splash.showMessage("Loading Stock Management System...", 
+    splash.showMessage("تحميل نظام إدارة المخزون...", 
                       Qt.AlignCenter | Qt.AlignBottom, Qt.black)
     splash.show()
     app.processEvents()
@@ -29,9 +29,9 @@ def main():
         # Show error message and exit
         error_dialog = QMessageBox()
         error_dialog.setIcon(QMessageBox.Critical)
-        error_dialog.setWindowTitle("Database Error")
-        error_dialog.setText("Cannot create the database connection.")
-        error_dialog.setInformativeText(f"Please check if the database is accessible: {str(e)}")
+        error_dialog.setWindowTitle("خطأ في قاعدة البيانات")
+        error_dialog.setText("لا يمكن إنشاء اتصال مع قاعدة البيانات.")
+        error_dialog.setInformativeText(f"يرجى التحقق من إمكانية الوصول لقاعدة البيانات: {str(e)}")
         error_dialog.exec()
         return
     

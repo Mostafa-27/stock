@@ -30,7 +30,7 @@ class SettingsWidget(QWidget):
         user_layout = QVBoxLayout(user_tab)
         
         # Password change group
-        password_group = QGroupBox("Change Password")
+        password_group = QGroupBox("تغيير كلمة المرور")
         password_layout = QFormLayout()
         
         self.current_password = QLineEdit()
@@ -40,11 +40,11 @@ class SettingsWidget(QWidget):
         self.confirm_password = QLineEdit()
         self.confirm_password.setEchoMode(QLineEdit.Password)
         
-        password_layout.addRow("Current Password:", self.current_password)
-        password_layout.addRow("New Password:", self.new_password)
-        password_layout.addRow("Confirm Password:", self.confirm_password)
+        password_layout.addRow("كلمة المرور الحالية:", self.current_password)
+        password_layout.addRow("كلمة المرور الجديدة:", self.new_password)
+        password_layout.addRow("تأكيد كلمة المرور:", self.confirm_password)
         
-        self.change_password_btn = QPushButton("Change Password")
+        self.change_password_btn = QPushButton("تغيير كلمة المرور")
         self.change_password_btn.clicked.connect(self.change_password)
         password_layout.addRow("", self.change_password_btn)
         
@@ -53,11 +53,11 @@ class SettingsWidget(QWidget):
         
         # Add user management if admin
         if self.current_user.get('is_admin', False):
-            admin_group = QGroupBox("User Management (Admin)")
+            admin_group = QGroupBox("إدارة المستخدمين (للمدير)")
             admin_layout = QVBoxLayout()
             
             # TODO: Add user management UI here if needed
-            admin_note = QLabel("User management functionality can be expanded here.")
+            admin_note = QLabel("يمكن توسيع وظائف إدارة المستخدمين هنا.")
             admin_layout.addWidget(admin_note)
             
             admin_group.setLayout(admin_layout)
@@ -68,21 +68,21 @@ class SettingsWidget(QWidget):
         printer_layout = QVBoxLayout(printer_tab)
         
         # Printer selection
-        printer_group = QGroupBox("Printer Settings")
+        printer_group = QGroupBox("إعدادات الطابعة")
         printer_form = QFormLayout()
         
         self.printer_combo = QComboBox()
-        self.refresh_printers_btn = QPushButton("Refresh")
+        self.refresh_printers_btn = QPushButton("تحديث")
         self.refresh_printers_btn.clicked.connect(self.load_printers)
         
         printer_selector = QHBoxLayout()
         printer_selector.addWidget(self.printer_combo)
         printer_selector.addWidget(self.refresh_printers_btn)
         
-        printer_form.addRow("Default Printer:", printer_selector)
+        printer_form.addRow("الطابعة الافتراضية:", printer_selector)
         
         # Auto-print option
-        self.auto_print = QCheckBox("Automatically print after transactions")
+        self.auto_print = QCheckBox("طباعة تلقائية بعد المعاملات")
         printer_form.addRow("", self.auto_print)
         
         printer_group.setLayout(printer_form)
@@ -93,11 +93,11 @@ class SettingsWidget(QWidget):
         company_layout = QVBoxLayout(company_tab)
         
         # Logo settings
-        logo_group = QGroupBox("Company Logo")
+        logo_group = QGroupBox("شعار الشركة")
         logo_layout = QVBoxLayout()
         
         # Logo preview
-        self.logo_preview = QLabel("No logo selected")
+        self.logo_preview = QLabel("لم يتم اختيار شعار")
         self.logo_preview.setAlignment(Qt.AlignCenter)
         self.logo_preview.setMinimumHeight(150)
         self.logo_preview.setStyleSheet("border: 1px solid #ccc;")
@@ -105,9 +105,9 @@ class SettingsWidget(QWidget):
         
         # Logo selection
         logo_buttons = QHBoxLayout()
-        self.select_logo_btn = QPushButton("Select Logo")
+        self.select_logo_btn = QPushButton("اختيار شعار")
         self.select_logo_btn.clicked.connect(self.select_logo)
-        self.clear_logo_btn = QPushButton("Clear Logo")
+        self.clear_logo_btn = QPushButton("مسح الشعار")
         self.clear_logo_btn.clicked.connect(self.clear_logo)
         
         logo_buttons.addWidget(self.select_logo_btn)
@@ -118,9 +118,9 @@ class SettingsWidget(QWidget):
         company_layout.addWidget(logo_group)
         
         # Add tabs
-        tabs.addTab(user_tab, "User Settings")
-        tabs.addTab(printer_tab, "Printer Settings")
-        tabs.addTab(company_tab, "Company Settings")
+        tabs.addTab(user_tab, "إعدادات المستخدم")
+        tabs.addTab(printer_tab, "إعدادات الطابعة")
+        tabs.addTab(company_tab, "إعدادات الشركة")
         
         main_layout.addWidget(tabs)
         
@@ -128,7 +128,7 @@ class SettingsWidget(QWidget):
         save_layout = QHBoxLayout()
         save_layout.addStretch()
         
-        self.save_btn = QPushButton("Save Settings")
+        self.save_btn = QPushButton("حفظ الإعدادات")
         self.save_btn.clicked.connect(self.save_settings)
         self.save_btn.setStyleSheet(
             "background-color: #4CAF50; color: white; padding: 8px; font-weight: bold;"
@@ -183,33 +183,33 @@ class SettingsWidget(QWidget):
         
         # Validate inputs
         if not current_pwd or not new_pwd or not confirm_pwd:
-            QMessageBox.warning(self, "Input Error", "All password fields are required.")
+            QMessageBox.warning(self, "خطأ في الإدخال", "جميع حقول كلمة المرور مطلوبة.")
             return
         
         if new_pwd != confirm_pwd:
-            QMessageBox.warning(self, "Input Error", "New passwords do not match.")
+            QMessageBox.warning(self, "خطأ في الإدخال", "كلمات المرور الجديدة غير متطابقة.")
             return
         
         # Verify current password
         status, _ = User.login(self.current_user['username'], current_pwd)
         if status != User.LOGIN_SUCCESS:
-            QMessageBox.warning(self, "Authentication Error", "Current password is incorrect.")
+            QMessageBox.warning(self, "خطأ في المصادقة", "كلمة المرور الحالية غير صحيحة.")
             return
         
         # Change password
         if User.change_password(self.current_user['id'], new_pwd):
-            QMessageBox.information(self, "Success", "Password changed successfully.")
+            QMessageBox.information(self, "نجح", "تم تغيير كلمة المرور بنجاح.")
             # Clear password fields
             self.current_password.clear()
             self.new_password.clear()
             self.confirm_password.clear()
         else:
-            QMessageBox.critical(self, "Error", "Failed to change password.")
+            QMessageBox.critical(self, "خطأ", "فشل في تغيير كلمة المرور.")
     
     def select_logo(self):
         file_dialog = QFileDialog(self)
         file_dialog.setFileMode(QFileDialog.ExistingFile)
-        file_dialog.setNameFilter("Images (*.png *.jpg *.jpeg *.bmp *.gif)")
+        file_dialog.setNameFilter("الصور (*.png *.jpg *.jpeg *.bmp *.gif)")
         
         if file_dialog.exec():
             selected_files = file_dialog.selectedFiles()
@@ -219,7 +219,7 @@ class SettingsWidget(QWidget):
     
     def clear_logo(self):
         self.logo_preview.setPixmap(QPixmap())
-        self.logo_preview.setText("No logo selected")
+        self.logo_preview.setText("لم يتم اختيار شعار")
     
     def update_logo_preview(self, logo_path):
         pixmap = QPixmap(logo_path)
@@ -230,7 +230,7 @@ class SettingsWidget(QWidget):
             # Store the path for saving later
             self.logo_path = logo_path
         else:
-            self.logo_preview.setText("Failed to load image")
+            self.logo_preview.setText("فشل في تحميل الصورة")
     
     def save_settings(self):
         # Save printer settings
@@ -243,11 +243,11 @@ class SettingsWidget(QWidget):
         # Save logo path if set
         if hasattr(self, 'logo_path') and self.logo_path:
             Settings.update_setting('company_logo', self.logo_path, 'file_path')
-        elif self.logo_preview.text() == "No logo selected":
+        elif self.logo_preview.text() == "لم يتم اختيار شعار":
             # Clear logo path if no logo is selected
             Settings.update_setting('company_logo', '', 'file_path')
         
         # Notify that settings have been updated
         self.settings_updated.emit()
         
-        QMessageBox.information(self, "Success", "Settings saved successfully.")
+        QMessageBox.information(self, "نجح", "تم حفظ الإعدادات بنجاح.")

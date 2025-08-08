@@ -16,26 +16,26 @@ class StockViewWidget(QWidget):
         filter_layout = QHBoxLayout()
         
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search by item name...")
+        self.search_input.setPlaceholderText("البحث بواسطة اسم المنتج...")
         
         self.invoice_filter = QLineEdit()
-        self.invoice_filter.setPlaceholderText("Filter by invoice number...")
+        self.invoice_filter.setPlaceholderText("تصفية بواسطة رقم الفاتورة...")
         
         self.sort_combo = QComboBox()
-        self.sort_combo.addItem("Sort by Name", "name")
-        self.sort_combo.addItem("Sort by Quantity (Low to High)", "quantity_asc")
-        self.sort_combo.addItem("Sort by Quantity (High to Low)", "quantity_desc")
-        self.sort_combo.addItem("Sort by Date (Newest First)", "date_desc")
-        self.sort_combo.addItem("Sort by Date (Oldest First)", "date_asc")
+        self.sort_combo.addItem("ترتيب بالاسم", "name")
+        self.sort_combo.addItem("ترتيب بالكمية (من الأقل للأكبر)", "quantity_asc")
+        self.sort_combo.addItem("ترتيب بالكمية (من الأكبر للأقل)", "quantity_desc")
+        self.sort_combo.addItem("ترتيب بالتاريخ (الأحدث أولا)", "date_desc")
+        self.sort_combo.addItem("ترتيب بالتاريخ (الأقدم أولا)", "date_asc")
         
-        self.search_button = QPushButton("Search")
-        self.reset_button = QPushButton("Reset")
+        self.search_button = QPushButton("بحث")
+        self.reset_button = QPushButton("إعادة تعيين")
         
-        filter_layout.addWidget(QLabel("Search:"))
+        filter_layout.addWidget(QLabel("بحث:"))
         filter_layout.addWidget(self.search_input)
-        filter_layout.addWidget(QLabel("Invoice:"))
+        filter_layout.addWidget(QLabel("فاتورة:"))
         filter_layout.addWidget(self.invoice_filter)
-        filter_layout.addWidget(QLabel("Sort:"))
+        filter_layout.addWidget(QLabel("ترتيب:"))
         filter_layout.addWidget(self.sort_combo)
         filter_layout.addWidget(self.search_button)
         filter_layout.addWidget(self.reset_button)
@@ -43,7 +43,7 @@ class StockViewWidget(QWidget):
         # Create table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["ID", "Item Name", "Quantity", "Price per Unit", "Invoice Number", "Date Added"])
+        self.table.setHorizontalHeaderLabels(["رقم", "اسم المنتج", "الكمية", "السعر لكل وحدة", "رقم الفاتورة", "تاريخ الإضافة"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         
         # Add widgets to layout

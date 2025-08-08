@@ -34,7 +34,7 @@ class AddMultipleItemsWidget(QWidget):
         layout = QVBoxLayout(scroll_widget)
         
         # Invoice Information Group
-        invoice_group = QGroupBox("Invoice Information")
+        invoice_group = QGroupBox("معلومات الفاتورة")
         invoice_layout = QFormLayout(invoice_group)
         
         self.invoice_number = QLineEdit()
@@ -61,15 +61,15 @@ class AddMultipleItemsWidget(QWidget):
         self.notes = QTextEdit()
         self.notes.setMaximumHeight(100)
         
-        invoice_layout.addRow("Invoice Number *:", self.invoice_number)
-        invoice_layout.addRow("Supplier *:", self.supplier_combo)
-        invoice_layout.addRow("Date:", self.date)
-        invoice_layout.addRow("Payment Status:", self.payment_status)
-        invoice_layout.addRow("Paid Amount:", self.paid_amount)
-        invoice_layout.addRow("Notes:", self.notes)
+        invoice_layout.addRow("رقم الفاتورة *:", self.invoice_number)
+        invoice_layout.addRow("المورد *:", self.supplier_combo)
+        invoice_layout.addRow("التاريخ:", self.date)
+        invoice_layout.addRow("حالة الدفع:", self.payment_status)
+        invoice_layout.addRow("المبلغ المدفوع:", self.paid_amount)
+        invoice_layout.addRow("ملاحظات:", self.notes)
         
         # Item Entry Group
-        item_group = QGroupBox("Add Items")
+        item_group = QGroupBox("إضافة منتجات")
         item_layout = QFormLayout(item_group)
         
         self.item_name = QLineEdit()
@@ -79,7 +79,7 @@ class AddMultipleItemsWidget(QWidget):
         
         # Quantity type dropdown
         self.quantity_type = QComboBox()
-        self.quantity_type.addItems(['unit', 'kg', 'liter', 'gram', 'meter', 'box', 'piece', 'ton'])
+        self.quantity_type.addItems(['وحدة', 'كيلو', 'لتر', 'جرام', 'متر', 'صندوق', 'قطعة', 'طن'])
         self.quantity_type.setEditable(True)  # Allow custom types
         
         self.price = QDoubleSpinBox()
@@ -88,27 +88,27 @@ class AddMultipleItemsWidget(QWidget):
         self.price.setDecimals(2)
         
         # Add item button
-        self.add_item_button = QPushButton("Add Item to List")
+        self.add_item_button = QPushButton("إضافة منتج للقائمة")
         
-        item_layout.addRow("Item Name *:", self.item_name)
-        item_layout.addRow("Quantity *:", self.quantity)
-        item_layout.addRow("Quantity Type:", self.quantity_type)
-        item_layout.addRow("Price per Unit *:", self.price)
+        item_layout.addRow("اسم المنتج *:", self.item_name)
+        item_layout.addRow("الكمية *:", self.quantity)
+        item_layout.addRow("نوع الكمية:", self.quantity_type)
+        item_layout.addRow("السعر لكل وحدة *:", self.price)
         item_layout.addRow("", self.add_item_button)
         
         # Items List Table
-        list_group = QGroupBox("Items in Invoice")
+        list_group = QGroupBox("المنتجات في الفاتورة")
         list_layout = QVBoxLayout(list_group)
         
         self.items_table = QTableWidget()
         self.items_table.setColumnCount(5)
-        self.items_table.setHorizontalHeaderLabels(['Item Name', 'Quantity', 'Type', 'Price/Unit', 'Total'])
+        self.items_table.setHorizontalHeaderLabels(['اسم المنتج', 'الكمية', 'النوع', 'السعر/الوحدة', 'الإجمالي'])
         self.items_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         
         # Table buttons
         table_buttons_layout = QHBoxLayout()
-        self.remove_item_button = QPushButton("Remove Selected")
-        self.clear_all_button = QPushButton("Clear All")
+        self.remove_item_button = QPushButton("حذف المحدد")
+        self.clear_all_button = QPushButton("مسح الكل")
         
         table_buttons_layout.addWidget(self.remove_item_button)
         table_buttons_layout.addWidget(self.clear_all_button)
@@ -119,15 +119,15 @@ class AddMultipleItemsWidget(QWidget):
         
         # Total Display
         total_layout = QHBoxLayout()
-        self.total_label = QLabel("Total Amount: $0.00")
+        self.total_label = QLabel("إجمالي المبلغ: $0.00")
         self.total_label.setStyleSheet("font-weight: bold; font-size: 14px;")
         total_layout.addStretch()
         total_layout.addWidget(self.total_label)
         
         # Main Action Buttons
         button_layout = QHBoxLayout()
-        self.save_invoice_button = QPushButton("Save Invoice")
-        self.clear_form_button = QPushButton("Clear Form")
+        self.save_invoice_button = QPushButton("حفظ الفاتورة")
+        self.clear_form_button = QPushButton("مسح النموذج")
         
         self.save_invoice_button.setStyleSheet("font-weight: bold; padding: 10px;")
         
@@ -173,7 +173,7 @@ class AddMultipleItemsWidget(QWidget):
         """Add an item to the items list"""
         # Validate item fields
         if not self.item_name.text().strip():
-            QMessageBox.warning(self, "Validation Error", "Item Name is required")
+            QMessageBox.warning(self, "خطأ في التحقق", "اسم المنتج مطلوب")
             return
         
         item_name = self.item_name.text().strip()
@@ -204,7 +204,7 @@ class AddMultipleItemsWidget(QWidget):
             self.update_items_table()
             self.update_total()
         else:
-            QMessageBox.information(self, "Info", "Please select an item to remove")
+            QMessageBox.information(self, "معلومات", "يرجى اختيار منتج لحذفه")
     
     def clear_items_list(self):
         """Clear all items from the list"""
@@ -226,7 +226,7 @@ class AddMultipleItemsWidget(QWidget):
     def update_total(self):
         """Update the total amount display"""
         total = sum(item['total'] for item in self.items_list)
-        self.total_label.setText(f"Total Amount: ${total:.2f}")
+        self.total_label.setText(f"إجمالي المبلغ: ${total:.2f}")
     
     def clear_item_fields(self):
         """Clear the item entry fields"""
@@ -239,15 +239,15 @@ class AddMultipleItemsWidget(QWidget):
         """Save the invoice with all items"""
         # Validate invoice fields
         if not self.invoice_number.text().strip():
-            QMessageBox.warning(self, "Validation Error", "Invoice Number is required")
+            QMessageBox.warning(self, "خطأ في التحقق", "رقم الفاتورة مطلوب")
             return
         
         if self.supplier_combo.currentText() == "-- اختر المورد --":
-            QMessageBox.warning(self, "Validation Error", "Please select a supplier")
+            QMessageBox.warning(self, "خطأ في التحقق", "يرجى اختيار مورد")
             return
         
         if not self.items_list:
-            QMessageBox.warning(self, "Validation Error", "Please add at least one item")
+            QMessageBox.warning(self, "خطأ في التحقق", "يرجى إضافة منتج واحد على الأقل")
             return
         
         # Get form values
@@ -264,7 +264,7 @@ class AddMultipleItemsWidget(QWidget):
         if payment_status == Invoice.PAYMENT_STATUS['PARTIALLY_PAID']:
             paid_amount = self.paid_amount.value()
             if paid_amount >= total_amount:
-                QMessageBox.warning(self, "Validation Error", "Paid amount must be less than total amount for partially paid status")
+                QMessageBox.warning(self, "خطأ في التحقق", "المبلغ المدفوع يجب أن يكون أقل من إجمالي المبلغ للحالة مدفوع جزئيا")
                 return
         elif payment_status == Invoice.PAYMENT_STATUS['PAID']:
             paid_amount = total_amount
@@ -277,7 +277,7 @@ class AddMultipleItemsWidget(QWidget):
             existing_invoice = cursor.fetchone()
             
             if existing_invoice:
-                QMessageBox.warning(self, "Validation Error", f"Invoice number '{invoice_number}' already exists")
+                QMessageBox.warning(self, "خطأ في التحقق", f"رقم الفاتورة '{invoice_number}' موجود بالفعل")
                 conn.close()
                 return
             conn.close()
@@ -293,7 +293,7 @@ class AddMultipleItemsWidget(QWidget):
             )
             
             if not invoice_id:
-                QMessageBox.critical(self, "Error", "Failed to create invoice")
+                QMessageBox.critical(self, "خطأ", "فشل في إنشاء الفاتورة")
                 return
             
             # Add all items using a different approach
@@ -334,19 +334,19 @@ class AddMultipleItemsWidget(QWidget):
                         conn.close()
             
             if items_added == len(self.items_list):
-                QMessageBox.information(self, "Success", f"Invoice saved successfully with {items_added} items")
+                QMessageBox.information(self, "نجح", f"تم حفظ الفاتورة بنجاح مع {items_added} منتج")
                 # Emit signal with invoice number for printing
                 self.items_added.emit(invoice_number)
                 self.clear_form()
             elif items_added > 0:
                 failed_list = ", ".join(failed_items)
-                QMessageBox.warning(self, "Partial Success", 
-                                  f"Invoice saved with {items_added} items.\nFailed items: {failed_list}")
+                QMessageBox.warning(self, "نجح جزئي", 
+                                  f"تم حفظ الفاتورة مع {items_added} منتج.\nالمنتجات الفاشلة: {failed_list}")
             else:
-                QMessageBox.critical(self, "Error", "Failed to add any items to the invoice")
+                QMessageBox.critical(self, "خطأ", "فشل في إضافة أي منتجات للفاتورة")
             
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save invoice: {e}")
+            QMessageBox.critical(self, "خطأ", f"فشل في حفظ الفاتورة: {e}")
     
     def clear_form(self):
         """Clear the entire form"""

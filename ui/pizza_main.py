@@ -160,7 +160,7 @@ class PizzaMainWidget(QWidget):
         
         # Total input
         total_input_layout = QHBoxLayout()
-        total_label = QLabel("Total:")
+        total_label = QLabel("الإجمالي:")
         total_label.setStyleSheet("font-weight: bold; font-size: 14px;")
         self.total_input = QLineEdit()
         self.total_input.setStyleSheet("""
@@ -211,14 +211,14 @@ class PizzaMainWidget(QWidget):
         
         # Subtotal
         subtotal_layout = QVBoxLayout()
-        subtotal_label = QLabel("Subtotal:")
+        subtotal_label = QLabel("الفرعي:")
         self.subtotal_input = QLineEdit()
         subtotal_layout.addWidget(subtotal_label)
         subtotal_layout.addWidget(self.subtotal_input)
         
         # Discount
         discount_layout = QVBoxLayout()
-        discount_label = QLabel("Discount:")
+        discount_label = QLabel("خصم:")
         discount_input_layout = QHBoxLayout()
         self.discount_input = QLineEdit()
         discount_percent_btn = QPushButton("%")
@@ -231,8 +231,8 @@ class PizzaMainWidget(QWidget):
         
         # Tax
         tax_layout = QVBoxLayout()
-        tax_label = QLabel("tax: 12%")
-        tax_label2 = QLabel("Delivery:")
+        tax_label = QLabel("ضريبة: 12%")
+        tax_label2 = QLabel("توصيل:")
         self.delivery_input = QLineEdit()
         tax_layout.addWidget(tax_label)
         tax_layout.addWidget(tax_label2)
