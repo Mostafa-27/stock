@@ -119,7 +119,7 @@ class AddMultipleItemsWidget(QWidget):
         
         # Total Display
         total_layout = QHBoxLayout()
-        self.total_label = QLabel("إجمالي المبلغ: £0.00")
+        self.total_label = QLabel("إجمالي المبلغ: 0.00 ج.م")
         self.total_label.setStyleSheet("font-weight: bold; font-size: 14px;")
         total_layout.addStretch()
         total_layout.addWidget(self.total_label)
@@ -220,13 +220,13 @@ class AddMultipleItemsWidget(QWidget):
             self.items_table.setItem(row, 0, QTableWidgetItem(item['item_name']))
             self.items_table.setItem(row, 1, QTableWidgetItem(str(item['quantity'])))
             self.items_table.setItem(row, 2, QTableWidgetItem(item['quantity_type']))
-            self.items_table.setItem(row, 3, QTableWidgetItem(f"£{item['price_per_unit']:.2f}"))
-            self.items_table.setItem(row, 4, QTableWidgetItem(f"£{item['total']:.2f}"))
+            self.items_table.setItem(row, 3, QTableWidgetItem(f"{item['price_per_unit']:.2f} ج.م"))
+            self.items_table.setItem(row, 4, QTableWidgetItem(f"{item['total']:.2f} ج.م"))
     
     def update_total(self):
         """Update the total amount display"""
         total = sum(item['total'] for item in self.items_list)
-        self.total_label.setText(f"إجمالي المبلغ: ${total:.2f}")
+        self.total_label.setText(f"إجمالي المبلغ: {total:.2f} ج.م")
     
     def clear_item_fields(self):
         """Clear the item entry fields"""

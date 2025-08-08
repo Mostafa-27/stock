@@ -115,29 +115,29 @@ def generate_receipt_content(invoice_data, items_data, logo_path=None, is_histor
     # Draw header
     painter.setFont(title_font)
     if is_history:
-        painter.drawText(x, y, "HISTORY OPERATIONS REPORT")
+        painter.drawText(x, y, "تقرير العمليات التاريخية")
     else:
-        painter.drawText(x, y, "INVOICE")
+        painter.drawText(x, y, "فاتورة")
     y += line_height * 2
     
     # Reset to normal font
     painter.setFont(normal_font)
     
     # Draw document details
-    painter.drawText(x, y, f"Reference #: {str(invoice_data['invoice_number'])}")
+    painter.drawText(x, y, f"رقم المرجع: {str(invoice_data['invoice_number'])}")
     y += line_height
-    painter.drawText(x, y, f"Date: {str(invoice_data['issue_date'])}")
+    painter.drawText(x, y, f"التاريخ: {str(invoice_data['issue_date'])}")
     y += line_height
     
     if is_history:
-        painter.drawText(x, y, f"Report Type: {str(invoice_data['supplier_name'])}")
+        painter.drawText(x, y, f"نوع التقرير: {str(invoice_data['supplier_name'])}")
     else:
-        painter.drawText(x, y, f"Supplier: {str(invoice_data['supplier_name'])}")
+        painter.drawText(x, y, f"المورد: {str(invoice_data['supplier_name'])}")
     y += line_height
     
     # Add notes if available
     if 'notes' in invoice_data and invoice_data['notes']:
-        painter.drawText(x, y, f"Notes: {str(invoice_data['notes'])}")
+        painter.drawText(x, y, f"ملاحظات: {str(invoice_data['notes'])}")
         y += line_height
     
     y += line_height
@@ -145,15 +145,15 @@ def generate_receipt_content(invoice_data, items_data, logo_path=None, is_histor
     # Draw items header
     painter.setFont(header_font)
     if is_history:
-        painter.drawText(x, y, "Item/Operation")
-        painter.drawText(x + 250, y, "Quantity")
-        painter.drawText(x + 350, y, "Date")
-        painter.drawText(x + 450, y, "User/Details")
+        painter.drawText(x, y, "الصنف/العملية")
+        painter.drawText(x + 250, y, "الكمية")
+        painter.drawText(x + 350, y, "التاريخ")
+        painter.drawText(x + 450, y, "المستخدم/التفاصيل")
     else:
-        painter.drawText(x, y, "Item")
-        painter.drawText(x + 200, y, "Quantity")
-        painter.drawText(x + 300, y, "Price")
-        painter.drawText(x + 400, y, "Total")
+        painter.drawText(x, y, "الصنف")
+        painter.drawText(x + 200, y, "الكمية")
+        painter.drawText(x + 300, y, "السعر")
+        painter.drawText(x + 400, y, "المجموع")
     y += line_height
     
     # Draw separator line
@@ -178,9 +178,9 @@ def generate_receipt_content(invoice_data, items_data, logo_path=None, is_histor
             # Convert to float to ensure proper formatting
             price_per_unit = float(item['price_per_unit']) if item['price_per_unit'] is not None else 0.0
             quantity = int(item['quantity']) if item['quantity'] is not None else 0
-            painter.drawText(x + 300, y, f"£{price_per_unit:.2f}")
+            painter.drawText(x + 300, y, f"{price_per_unit:.2f} ج.م")
             total = quantity * price_per_unit
-            painter.drawText(x + 400, y, f"£{total:.2f}")
+            painter.drawText(x + 400, y, f"{total:.2f} ج.م")
         y += line_height
         
         # Check if we need to start a new page (simple pagination)
@@ -197,35 +197,42 @@ def generate_receipt_content(invoice_data, items_data, logo_path=None, is_histor
     # Only show financial details for invoices, not history reports
     if not is_history:
         # Draw total
-        painter.drawText(x + 300, y, "Total:")
+        painter.drawText(x + 300, y, "المجموع:")
         # Convert to float to ensure proper formatting
         total_amount = float(invoice_data['total_amount']) if invoice_data['total_amount'] is not None else 0.0
-        painter.drawText(x + 400, y, f"£{total_amount:.2f}")
+        painter.drawText(x + 400, y, f"{total_amount:.2f} ج.م")
         y += line_height
         
-        # Draw payment status
-        painter.drawText(x + 300, y, "Status:")
-        painter.drawText(x + 400, y, str(invoice_data['payment_status']))
+        # Draw payment status (translate to Arabic if needed)
+        painter.drawText(x + 300, y, "الحالة:")
+        payment_status = str(invoice_data['payment_status'])
+        if payment_status == "PAID" or payment_status == "Paid":
+            payment_status = "مدفوع"
+        elif payment_status == "PARTIALLY_PAID" or payment_status == "Partially Paid":
+            payment_status = "مدفوع جزئيا"
+        elif payment_status == "DELAYED" or payment_status == "Delayed":
+            payment_status = "متأخر"
+        painter.drawText(x + 400, y, payment_status)
         
-        if invoice_data['payment_status'] == 'Partially Paid':
+        if payment_status == 'مدفوع جزئيا':
             y += line_height
-            painter.drawText(x + 300, y, "Paid:")
+            painter.drawText(x + 300, y, "المدفوع:")
             # Convert to float to ensure proper formatting
             paid_amount = float(invoice_data['paid_amount']) if invoice_data['paid_amount'] is not None else 0.0
-            painter.drawText(x + 400, y, f"£{paid_amount:.2f}")
+            painter.drawText(x + 400, y, f"{paid_amount:.2f} ج.م")
             y += line_height
             remaining = total_amount - paid_amount
-            painter.drawText(x + 300, y, "Remaining:")
-            painter.drawText(x + 400, y, f"£{remaining:.2f}")
+            painter.drawText(x + 300, y, "المتبقي:")
+            painter.drawText(x + 400, y, f"{remaining:.2f} ج.م")
     
     # Draw footer
     y += line_height * 3
     if is_history:
-        painter.drawText(x, y, "End of History Report")
+        painter.drawText(x, y, "نهاية تقرير العمليات التاريخية")
     else:
-        painter.drawText(x, y, "Thank you for your business!")
+        painter.drawText(x, y, "شكراً لتعاملكم معنا!")
     y += line_height
-    painter.drawText(x, y, f"Printed on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    painter.drawText(x, y, f"طُبع في: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     painter.end()
     return pixmap

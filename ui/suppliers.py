@@ -15,8 +15,125 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import os
 from datetime import datetime, timedelta
+
+# Try to import bidi for proper Arabic text processing
+try:
+    from bidi.algorithm import get_display
+    BIDI_AVAILABLE = True
+except ImportError:
+    BIDI_AVAILABLE = False
+    print("Warning: python-bidi not available. Arabic text may not display correctly.")
+
+# Try to import arabic-reshaper for proper Arabic text shaping
+try:
+    import arabic_reshaper
+    ARABIC_RESHAPER_AVAILABLE = True
+except ImportError:
+    ARABIC_RESHAPER_AVAILABLE = False
+    print("Warning: arabic-reshaper not available. Arabic text may not display correctly.")
+
+# Register Arabic font for PDF generation
+def register_arabic_font():
+    """Register Arabic font for ReportLab PDF generation"""
+    try:
+        # Try to register fonts that support Arabic text
+        font_paths = [
+            "C:/Windows/Fonts/tahoma.ttf",  # Tahoma supports Arabic well
+            "C:/Windows/Fonts/tahomabd.ttf",  # Tahoma Bold supports Arabic well
+            "C:/Windows/Fonts/arial.ttf",  # Arial supports basic Arabic
+            "C:/Windows/Fonts/arialbd.ttf",  # Arial Bold supports basic Arabic
+            "C:/Windows/Fonts/calibri.ttf",  # Calibri supports Arabic
+            "C:/Windows/Fonts/segoeui.ttf",  # Segoe UI supports Arabic
+            "C:/Windows/Fonts/times.ttf",  # Times New Roman supports Arabic
+        ]
+        
+        registered = False
+        for font_path in font_paths:
+            if os.path.exists(font_path):
+                try:
+                    pdfmetrics.registerFont(TTFont('Arabic', font_path))
+                    # Also register bold version if Tahoma
+                    if 'tahoma.ttf' in font_path:
+                        bold_path = font_path.replace('tahoma.ttf', 'tahomabd.ttf')
+                        if os.path.exists(bold_path):
+                            pdfmetrics.registerFont(TTFont('Arabic-Bold', bold_path))
+                    registered = True
+                    print(f"Successfully registered Arabic font: {font_path}")
+                    break
+                except Exception as e:
+                    print(f"Failed to register font {font_path}: {e}")
+                    continue
+        
+        if not registered:
+            # If no system fonts found, try DejaVu Sans which has good Arabic support
+            print("Warning: No Arabic-supporting fonts found, trying DejaVu Sans...")
+            try:
+                # DejaVu Sans typically has good Arabic support and is often available
+                dejavu_path = "C:/Windows/Fonts/DejaVuSans.ttf"
+                if os.path.exists(dejavu_path):
+                    pdfmetrics.registerFont(TTFont('Arabic', dejavu_path))
+                    registered = True
+                else:
+                    # Register Arial as fallback (should be available on most systems)
+                    pdfmetrics.registerFont(TTFont('Arabic', 'C:/Windows/Fonts/arial.ttf'))
+                    registered = True
+            except:
+                # If even Arial fails, use default system font
+                print("Using default system font for Arabic text")
+                registered = False
+                
+        return registered
+        
+    except Exception as e:
+        print(f"Error registering Arabic font: {e}")
+        # Register fallback font
+        try:
+            # Try to use built-in font that supports Unicode
+            return False  # Let system handle font selection
+        except:
+            return False
+
+# Register the font when module is imported
+font_registered = register_arabic_font()
+
+def get_font_name():
+    """Get the appropriate font name for Arabic text"""
+    if font_registered:
+        return 'Arabic'
+    else:
+        # Use built-in fonts that should support Unicode/Arabic better
+        return 'Times-Roman'  # Times-Roman has better Unicode support than Helvetica
+
+def format_arabic_text(text):
+    """Format Arabic text for proper display in PDF"""
+    if not text:
+        return ""
+    
+    text_str = str(text)
+    
+    # First, reshape Arabic text to connect letters properly
+    if ARABIC_RESHAPER_AVAILABLE:
+        try:
+            reshaped_text = arabic_reshaper.reshape(text_str)
+        except Exception as e:
+            print(f"Warning: Could not reshape Arabic text: {e}")
+            reshaped_text = text_str
+    else:
+        reshaped_text = text_str
+    
+    # Then apply bidirectional algorithm for proper text direction
+    if BIDI_AVAILABLE:
+        try:
+            # Use bidi algorithm to properly format Arabic text direction
+            return get_display(reshaped_text)
+        except Exception as e:
+            print(f"Warning: Could not format Arabic text direction: {e}")
+            return reshaped_text
+    
+    return reshaped_text
 from models.supplier import Supplier
 from models.branch import Branch
+from models.invoice import Invoice
 
 class SuppliersWidget(QWidget):
     def __init__(self):
@@ -899,11 +1016,19 @@ class SuppliersWidget(QWidget):
             # Total amount
             self.invoices_table.setItem(row, 2, QTableWidgetItem(f"{invoice[2]:.2f}"))
             
-            # Payment status
-            status_item = QTableWidgetItem(str(invoice[3]))
-            if invoice[3] == "مدفوع":
+            # Payment status (translate to Arabic)
+            payment_status = str(invoice[3])
+            if payment_status == "PAID" or payment_status == "Paid":
+                payment_status = "مدفوع"
+            elif payment_status == "PARTIALLY_PAID" or payment_status == "Partially Paid":
+                payment_status = "مدفوع جزئيا"
+            elif payment_status == "DELAYED" or payment_status == "Delayed":
+                payment_status = "متأخر"
+            
+            status_item = QTableWidgetItem(payment_status)
+            if payment_status == "مدفوع":
                 status_item.setBackground(Qt.green)
-            elif invoice[3] == "غير مدفوع":
+            elif payment_status == "متأخر":
                 status_item.setBackground(Qt.red)
             else:
                 status_item.setBackground(Qt.yellow)
@@ -980,37 +1105,61 @@ class SuppliersWidget(QWidget):
         story = []
         styles = getSampleStyleSheet()
         
-        # Title
+        # Get appropriate font name
+        font_name = get_font_name()
+        
+        # Create custom styles with Arabic font and RTL support
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
             fontSize=18,
             spaceAfter=30,
-            alignment=1  # Center alignment
+            alignment=1,  # Center alignment
+            fontName=font_name,
+            wordWrap='RTL'  # Right-to-left text direction
+        )
+        
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=12,
+            fontName=font_name,
+            alignment=2,  # Right alignment for Arabic text
+            wordWrap='RTL'  # Right-to-left text direction
         )
         
         current_supplier = self.supplier_combo.currentText()
-        title = Paragraph(f"تقرير فواتير المورد: {current_supplier}", title_style)
+        title = Paragraph(format_arabic_text(f"تقرير فواتير المورد: {current_supplier}"), title_style)
         story.append(title)
         
         # Date range if filtering is applied
         if hasattr(self, 'from_date') and hasattr(self, 'to_date'):
             date_range = f"من {self.from_date.date().toString('yyyy-MM-dd')} إلى {self.to_date.date().toString('yyyy-MM-dd')}"
-            date_para = Paragraph(date_range, styles['Normal'])
+            date_para = Paragraph(format_arabic_text(date_range), normal_style)
             story.append(date_para)
             story.append(Spacer(1, 12))
         
         # Create table data
-        data = [['رقم الفاتورة', 'المورد', 'المبلغ الإجمالي', 'حالة الدفع', 'المبلغ المدفوع', 'تاريخ الإصدار']]
+        data = [[format_arabic_text('رقم الفاتورة'), format_arabic_text('المورد'), format_arabic_text('المبلغ الإجمالي'), 
+                format_arabic_text('حالة الدفع'), format_arabic_text('المبلغ المدفوع'), format_arabic_text('تاريخ الإصدار')]]
         
         for invoice in invoices:
             date_str = invoice[5].strftime("%Y-%m-%d") if invoice[5] else ""
+            # Translate payment status to Arabic
+            payment_status = str(invoice[3])
+            if payment_status == "PAID" or payment_status == "Paid":
+                payment_status = "مدفوع"
+            elif payment_status == "PARTIALLY_PAID" or payment_status == "Partially Paid":
+                payment_status = "مدفوع جزئيا"
+            elif payment_status == "DELAYED" or payment_status == "Delayed":
+                payment_status = "متأخر"
+            
             data.append([
                 str(invoice[0]),
-                str(invoice[1]),
-                f"{invoice[2]:.2f}",
-                str(invoice[3]),
-                f"{invoice[4]:.2f}",
+                format_arabic_text(str(invoice[1])),
+                f"{invoice[2]:.2f} ج.م",
+                format_arabic_text(payment_status),
+                f"{invoice[4]:.2f} ج.م",
                 date_str
             ])
         
@@ -1019,11 +1168,13 @@ class SuppliersWidget(QWidget):
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),  # Right alignment for Arabic text
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),  # Vertical middle alignment
+            ('FONTNAME', (0, 0), (-1, 0), font_name),  # Use dynamic font for headers
             ('FONTSIZE', (0, 0), (-1, 0), 12),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('FONTNAME', (0, 1), (-1, -1), font_name),  # Use dynamic font for data
             ('GRID', (0, 0), (-1, -1), 1, colors.black)
         ]))
         
@@ -1036,17 +1187,17 @@ class SuppliersWidget(QWidget):
         remaining_amount = total_amount - paid_amount
         
         summary_data = [
-            ['إجمالي الفواتير', str(len(invoices))],
-            ['إجمالي المبلغ', f"{total_amount:.2f}"],
-            ['المبلغ المدفوع', f"{paid_amount:.2f}"],
-            ['المبلغ المتبقي', f"{remaining_amount:.2f}"]
+            [format_arabic_text('إجمالي الفواتير'), str(len(invoices))],
+            [format_arabic_text('إجمالي المبلغ'), f"{total_amount:.2f} ج.م"],
+            [format_arabic_text('المبلغ المدفوع'), f"{paid_amount:.2f} ج.م"],
+            [format_arabic_text('المبلغ المتبقي'), f"{remaining_amount:.2f} ج.م"]
         ]
         
         summary_table = Table(summary_data)
         summary_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), colors.lightgrey),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 0), (-1, -1), font_name),  # Use dynamic font for summary
             ('FONTSIZE', (0, 0), (-1, -1), 12),
             ('GRID', (0, 0), (-1, -1), 1, colors.black)
         ]))
@@ -1228,31 +1379,46 @@ class SuppliersWidget(QWidget):
         story = []
         styles = getSampleStyleSheet()
         
-        # Title
+        # Get appropriate font name
+        font_name = get_font_name()
+        
+        # Create custom styles with Arabic font and RTL support
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
             fontSize=18,
             spaceAfter=30,
-            alignment=1  # Center alignment
+            alignment=1,  # Center alignment
+            fontName=font_name,
+            wordWrap='RTL'  # Right-to-left text direction
         )
         
-        title = Paragraph("تقرير الفروع", title_style)
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=12,
+            fontName=font_name,
+            alignment=2,  # Right alignment for Arabic text
+            wordWrap='RTL'  # Right-to-left text direction
+        )
+        
+        title = Paragraph(format_arabic_text("تقرير الفروع"), title_style)
         story.append(title)
         
         # Generation date
-        date_para = Paragraph(f"تاريخ التقرير: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal'])
+        date_para = Paragraph(format_arabic_text(f"تاريخ التقرير: {datetime.now().strftime('%Y-%m-%d %H:%M')}"), normal_style)
         story.append(date_para)
         story.append(Spacer(1, 12))
         
         # Create table data with new branch information
-        data = [['اسم الفرع', 'كود الفرع', 'مدير الفرع', 'إجمالي الاستخراجات', 'إجمالي الكمية', 'عدد الأصناف المختلفة']]
+        data = [[format_arabic_text('اسم الفرع'), format_arabic_text('كود الفرع'), format_arabic_text('مدير الفرع'), 
+                format_arabic_text('إجمالي الاستخراجات'), format_arabic_text('إجمالي الكمية'), format_arabic_text('عدد الأصناف المختلفة')]]
         
         for branch in branch_data:
             data.append([
-                str(branch[0]) if branch[0] else "",
-                str(branch[4]) if branch[4] else "غير محدد",
-                str(branch[5]) if branch[5] else "غير محدد",
+                format_arabic_text(str(branch[0])) if branch[0] else "",
+                format_arabic_text(str(branch[4])) if branch[4] else format_arabic_text("غير محدد"),
+                format_arabic_text(str(branch[5])) if branch[5] else format_arabic_text("غير محدد"),
                 str(branch[1]),
                 str(branch[2]),
                 str(branch[3])
@@ -1264,10 +1430,11 @@ class SuppliersWidget(QWidget):
             ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 0), (-1, 0), font_name),  # Use dynamic font for headers
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('FONTNAME', (0, 1), (-1, -1), font_name),  # Use dynamic font for data
             ('GRID', (0, 0), (-1, -1), 1, colors.black)
         ]))
         
@@ -1280,16 +1447,16 @@ class SuppliersWidget(QWidget):
         total_branches = len(branch_data)
         
         summary_data = [
-            ['إجمالي الفروع', str(total_branches)],
-            ['إجمالي الاستخراجات', str(total_extractions)],
-            ['إجمالي الكمية المستخرجة', str(total_quantity)]
+            [format_arabic_text('إجمالي الفروع'), str(total_branches)],
+            [format_arabic_text('إجمالي الاستخراجات'), str(total_extractions)],
+            [format_arabic_text('إجمالي الكمية المستخرجة'), str(total_quantity)]
         ]
         
         summary_table = Table(summary_data)
         summary_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), colors.lightgrey),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 0), (-1, -1), font_name),  # Use dynamic font for summary
             ('FONTSIZE', (0, 0), (-1, -1), 12),
             ('GRID', (0, 0), (-1, -1), 1, colors.black)
         ]))

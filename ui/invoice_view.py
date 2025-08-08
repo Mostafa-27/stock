@@ -58,16 +58,16 @@ class PaymentDialog(QDialog):
         form_layout.setSpacing(10)
         
         # Display total amount
-        self.total_label = QLabel(f"£{total_amount:.2f}")
+        self.total_label = QLabel(f"{total_amount:.2f} ج.م")
         self.total_label.setObjectName("totalLabel")
         form_layout.addRow("إجمالي المبلغ:", self.total_label)
         
         # Display current paid amount
-        current_paid_label = QLabel(f"£{current_paid:.2f}")
+        current_paid_label = QLabel(f"{current_paid:.2f} ج.م")
         form_layout.addRow("المبلغ المدفوع حاليا:", current_paid_label)
         
         # Display remaining amount
-        remaining_label = QLabel(f"£{(total_amount - current_paid):.2f}")
+        remaining_label = QLabel(f"{(total_amount - current_paid):.2f} ج.م")
         form_layout.addRow("المبلغ المتبقي:", remaining_label)
         
         # Add separator
@@ -114,7 +114,7 @@ class PaymentDialog(QDialog):
         layout.addWidget(self.paid_amount)
         
         # Display total payment after this transaction
-        self.total_payment_label = QLabel(f"£{current_paid:.2f}")
+        self.total_payment_label = QLabel(f"{current_paid:.2f} ج.م")
         form_layout.addRow("إجمالي المدفوع بعد المعاملة:", self.total_payment_label)
         
         # Connect value changed to update total payment label
@@ -150,13 +150,13 @@ class PaymentDialog(QDialog):
             remaining = self.total_amount - self.current_paid
             self.paid_amount.setValue(remaining)
             self.paid_amount.setEnabled(False)
-            self.total_payment_label.setText(f"£{self.total_amount:.2f}")
+            self.total_payment_label.setText(f"{self.total_amount:.2f} ج.م")
             self.warning_label.setText("")
         elif status == Invoice.PAYMENT_STATUS['DELAYED']:
             # For delayed status, no additional payment
             self.paid_amount.setValue(0)
             self.paid_amount.setEnabled(False)
-            self.total_payment_label.setText(f"£{self.current_paid:.2f}")
+            self.total_payment_label.setText(f"{self.current_paid:.2f} ج.م")
             self.warning_label.setText("")
         else:  # Partially paid
             self.paid_amount.setEnabled(True)
@@ -166,7 +166,7 @@ class PaymentDialog(QDialog):
     def update_total_payment_label(self, additional_amount):
         # Update the total payment label based on current paid + additional amount
         total_payment = float(self.current_paid) + additional_amount
-        self.total_payment_label.setText(f"£{total_payment:.2f}")
+        self.total_payment_label.setText(f"{total_payment:.2f} ج.م")
         
     def validate_amount(self, additional_amount):
         total_payment = float(self.current_paid) + additional_amount
@@ -325,9 +325,9 @@ class InvoiceViewWidget(QWidget):
             
             # Create table items
             self.invoice_table.setItem(row_position, 0, QTableWidgetItem(invoice_number))
-            self.invoice_table.setItem(row_position, 1, QTableWidgetItem(f"£{total_amount:.2f}"))
-            self.invoice_table.setItem(row_position, 2, QTableWidgetItem(f"£{paid_amount:.2f}"))
-            self.invoice_table.setItem(row_position, 3, QTableWidgetItem(f"£{remaining:.2f}"))
+            self.invoice_table.setItem(row_position, 1, QTableWidgetItem(f"{total_amount:.2f} ج.م"))
+            self.invoice_table.setItem(row_position, 2, QTableWidgetItem(f"{paid_amount:.2f} ج.م"))
+            self.invoice_table.setItem(row_position, 3, QTableWidgetItem(f"{remaining:.2f} ج.م"))
             
             # Status with color coding
             status_item = QTableWidgetItem(payment_status)

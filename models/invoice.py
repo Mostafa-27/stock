@@ -4,9 +4,9 @@ from database import get_db_connection
 
 class Invoice:
     PAYMENT_STATUS = {
-        'PAID': 'Paid',
-        'PARTIALLY_PAID': 'Partially Paid',
-        'DELAYED': 'Delayed'
+        'PAID': 'مدفوع',
+        'PARTIALLY_PAID': 'مدفوع جزئيا',
+        'DELAYED': 'متأخر'
     }
     
     @staticmethod

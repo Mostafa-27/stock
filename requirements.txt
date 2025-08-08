@@ -4,3 +4,5 @@ pywin32>=305
 pyodbc>=4.0.34
 sqlalchemy>=1.4.0
 reportlab>=3.6.0
+python-bidi>=0.4.2
+arabic-reshaper>=3.0.0
