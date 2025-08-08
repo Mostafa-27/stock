@@ -42,8 +42,8 @@ class StockViewWidget(QWidget):
         
         # Create table
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["رقم", "اسم المنتج", "الكمية", "السعر لكل وحدة", "رقم الفاتورة", "تاريخ الإضافة"])
+        self.table.setColumnCount(7)
+        self.table.setHorizontalHeaderLabels(["رقم", "اسم المنتج", "الكمية", "نوع الوحدة", "السعر لكل وحدة", "رقم الفاتورة", "تاريخ الإضافة"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         
         # Add widgets to layout
@@ -117,7 +117,8 @@ class StockViewWidget(QWidget):
             
             self.table.setItem(row, 0, QTableWidgetItem(str(item.id)))
             self.table.setItem(row, 1, QTableWidgetItem(item.item_name))
-            self.table.setItem(row, 2, QTableWidgetItem(str(item.quantity)))
-            self.table.setItem(row, 3, QTableWidgetItem(f"{item.price_per_unit:.2f} ج.م"))
-            self.table.setItem(row, 4, QTableWidgetItem(item.invoice_number))
-            self.table.setItem(row, 5, QTableWidgetItem(str(item.date_added) if item.date_added else ""))
+            self.table.setItem(row, 2, QTableWidgetItem(f"{item.quantity} {item.quantity_type}"))
+            self.table.setItem(row, 3, QTableWidgetItem(item.quantity_type))
+            self.table.setItem(row, 4, QTableWidgetItem(f"{item.price_per_unit:.2f} ج.م"))
+            self.table.setItem(row, 5, QTableWidgetItem(item.invoice_number))
+            self.table.setItem(row, 6, QTableWidgetItem(str(item.date_added) if item.date_added else ""))

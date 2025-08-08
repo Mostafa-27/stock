@@ -655,10 +655,11 @@ class MainWindow(QMainWindow):
                             'id': item_row[0],
                             'item_name': item_row[1],
                             'quantity': item_row[2],
-                            'price_per_unit': item_row[3],
-                            'invoice_number': item_row[4],
-                            'supplier_name': item_row[5],
-                            'date_added': item_row[6]
+                            'quantity_type': item_row[3],
+                            'price_per_unit': item_row[4],
+                            'invoice_number': item_row[5],
+                            'supplier_name': item_row[6],
+                            'date_added': item_row[7]
                         })
                     
                     # Print the invoice
