@@ -3,10 +3,12 @@ from PySide6.QtWidgets import (QHeaderView, QMainWindow, QTableWidget, QTableWid
                               QMessageBox, QToolBar, QDialog, QLabel,
                               QComboBox, QSplitter, QListWidget, QListWidgetItem,
                               QFrame, QApplication, QTabWidget, QAbstractItemView)
-from PySide6.QtCore import Qt, QSize, Signal
+from PySide6.QtCore import Qt, QSize, Signal, QTimer
 from PySide6.QtGui import QIcon, QAction, QColor, QPalette, QFont, QPixmap
 import datetime
 import pyodbc
+
+from utils.resource_utils import get_image_path
 
 from ui.add_multiple_items import AddMultipleItemsWidget
 from ui.extract_item import ExtractItemWidget
@@ -104,10 +106,10 @@ class MainWindow(QMainWindow):
         
         # Current date and time
         current_date = QLabel(datetime.datetime.now().strftime("%Y-%m-%d"))
-        current_time = QLabel(datetime.datetime.now().strftime("%I:%M:%S %p"))
+        self.current_time = QLabel(datetime.datetime.now().strftime("%I:%M:%S %p"))
         invoice_label = QLabel(f" {user_info.text()}")  # Displaying user info in invoice label
 
-        for label in [current_date, current_time, invoice_label]:
+        for label in [current_date, self.current_time, invoice_label]:
             label.setStyleSheet("""
                 QLabel {
                     color: white;
@@ -117,15 +119,21 @@ class MainWindow(QMainWindow):
                 }
             """)
         
+        # Setup timer for updating current time
+        self.time_timer = QTimer()
+        self.time_timer.timeout.connect(self.update_current_time)
+        self.time_timer.start(1000)  # Update every 1000ms (1 second)
+        
         header_layout.addWidget(user_section)
         header_layout.addWidget(current_date)
-        header_layout.addWidget(current_time)
+        header_layout.addWidget(self.current_time)
         header_layout.addStretch()
         header_layout.addWidget(invoice_label)
         
         # Pizza Melano logo with actual image on the right
         logo_label = QLabel()
-        logo_pixmap = QPixmap("logo.png")
+        logo_path = get_image_path("logo.png")
+        logo_pixmap = QPixmap(logo_path)
         if not logo_pixmap.isNull():
             # Scale the logo to fit in the header
             scaled_pixmap = logo_pixmap.scaled(120, 70, Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -1169,6 +1177,11 @@ class MainWindow(QMainWindow):
         # This method is kept for compatibility but does nothing
         # Management functionality is now integrated directly in the management tab
         pass
+    
+    def update_current_time(self):
+        """Update the current time display"""
+        current_time_str = datetime.datetime.now().strftime("%I:%M:%S %p")
+        self.current_time.setText(current_time_str)
     
     def logout(self):
         """Handle logout functionality"""
