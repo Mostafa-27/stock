@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QLineEdit, 
-                               QPushButton, QMessageBox, QHBoxLayout, QFrame)
+                               QPushButton, QMessageBox, QHBoxLayout, QFrame, QGraphicsBlurEffect)
 from PySide6.QtCore import Qt, Signal, QPoint
-from PySide6.QtGui import QIcon, QPixmap, QFont, QPalette, QBrush, QColor, QMouseEvent
+from PySide6.QtGui import QIcon, QPixmap, QFont, QPalette, QBrush, QColor, QMouseEvent, QPainter
 
 from models.user import User
 from utils.resource_utils import get_image_path
@@ -21,26 +21,31 @@ class LoginWidget(QWidget):
         self.resize(1200, 700)  # Set initial size
         # Remove frameless window flag to use standard window frame
         
-        # Set background image directly on the main widget
+        # Create a background label for the blurred image
+        self.background_label = QLabel(self)
+        self.background_label.setScaledContents(True)
+        
+        # Set background image with blur effect
         background_image_path = get_image_path('loginbackground.jpg')
-        self.setStyleSheet(f"""
-            QWidget {{
-                background-image: url('{background_image_path}');
-                background-repeat: no-repeat;
-                background-position: center center;
-            }}
-        """)
+        pixmap = QPixmap(background_image_path)
+        
+        if not pixmap.isNull():
+            # Create blur effect
+            blur_effect = QGraphicsBlurEffect()
+            blur_effect.setBlurRadius(100)  # Adjust blur radius as needed
+            self.background_label.setGraphicsEffect(blur_effect)
+            self.background_label.setPixmap(pixmap)
         
         # Create main layout
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         
-        # Create white overlay for better contrast and readability
+        # Create white overlay for better contrast and readability with blur effect
         content_frame = QFrame()
         content_frame.setStyleSheet("""
             QFrame {
-                background-color: rgba(255, 255, 255, 0.8);
+                background-color: rgba(255, 255, 255, 0.5);
             }
         """)
         
@@ -51,7 +56,7 @@ class LoginWidget(QWidget):
         login_container.setAutoFillBackground(True)
         login_container.setStyleSheet("""
             QFrame {
-                background-color: rgba(255, 255, 255, 0.95);
+                background-color: rgba(255, 255, 255, 0.55);
                 background-image: none;
                 border-radius: 20px;
                 border: 2px solid rgba(200, 200, 200, 0.8);
@@ -215,6 +220,12 @@ class LoginWidget(QWidget):
         # Connect enter key to login button
         self.username_input.returnPressed.connect(self.attempt_login)
         self.password_input.returnPressed.connect(self.attempt_login)
+    
+    def resizeEvent(self, event):
+        """Handle window resize to maintain background scaling"""
+        super().resizeEvent(event)
+        if hasattr(self, 'background_label'):
+            self.background_label.resize(self.size())
     
     def attempt_login(self):
         username = self.username_input.text().strip()
