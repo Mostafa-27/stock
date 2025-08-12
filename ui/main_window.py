@@ -22,7 +22,7 @@ from models.settings import Settings
 from utils.printer_utils import print_invoice, show_print_dialog
 from models.invoice import Invoice
 from database import get_db_connection
-from management import ManagementWindow
+from management import SuppliersManagementWindow
 
 class MainWindow(QMainWindow):
     def __init__(self, user_data=None):
@@ -218,7 +218,7 @@ class MainWindow(QMainWindow):
         self.tab_widget.addTab(self.stock_view_widget, "المخزون")  # Reports
         self.tab_widget.addTab(self.extract_item_widget, "تصدير منتجات")  # Add Products
         self.tab_widget.addTab(self.suppliers_widget, "الموردين")  # Suppliers
-        self.tab_widget.addTab(self.management_widget, "إدارة الموردين والفروع")  # Management
+        self.tab_widget.addTab(self.management_widget, "إدارة الموردين")  # Suppliers Management
         self.tab_widget.addTab(self.add_item_widget, "إضافة منتجات")  # Settings
         self.tab_widget.addTab(self.settings_widget, "إعدادات الطابعة")  # Printer Settings
         
@@ -465,7 +465,7 @@ class MainWindow(QMainWindow):
             self.extract_item_widget.refresh_items()
         elif index == 4:  # Suppliers
             pass  # No refresh needed for suppliers
-        elif index == 5:  # Management (Suppliers and Branches)
+        elif index == 5:  # Suppliers Management
             self.load_management_data()
         elif index == 6:  # Add Items
             pass  # No refresh needed for add items
@@ -800,11 +800,9 @@ class MainWindow(QMainWindow):
         dialog.exec()
     
     def create_management_widget(self):
-        """Create the management widget with suppliers and branches tabs"""
+        """Create the suppliers management widget"""
         from models.supplier import Supplier
-        from models.branch import Branch
         from supplier_dialog import SupplierDialog
-        from branch_dialog import BranchDialog
         
         # Main widget
         widget = QWidget()
@@ -812,7 +810,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
         
         # Title
-        title = QLabel("إدارة الموردين والفروع")
+        title = QLabel("إدارة الموردين")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("""
             QLabel {
@@ -827,41 +825,10 @@ class MainWindow(QMainWindow):
         """)
         layout.addWidget(title)
         
-        # Tab widget for suppliers and branches
-        self.management_tab_widget = QTabWidget()
-        self.management_tab_widget.setStyleSheet("""
-            QTabWidget::pane {
-                border: 2px solid #bdc3c7;
-                border-radius: 5px;
-                background-color: white;
-            }
-            QTabBar::tab {
-                background-color: #ecf0f1;
-                color: black;
-                padding: 10px 20px;
-                margin-right: 2px;
-                border-top-left-radius: 5px;
-                border-top-right-radius: 5px;
-                font-weight: bold;
-            }
-            QTabBar::tab:selected {
-                background-color: #3498db;
-                color: white;
-            }
-            QTabBar::tab:hover {
-                background-color: #5dade2;
-                color: white;
-            }
-        """)
-        
-        # Create suppliers and branches tabs
+        # Suppliers management content directly (no tabs)
         self.suppliers_tab = self.create_suppliers_management_tab()
-        self.branches_tab = self.create_branches_management_tab()
+        layout.addWidget(self.suppliers_tab)
         
-        self.management_tab_widget.addTab(self.suppliers_tab, "الموردين")
-        self.management_tab_widget.addTab(self.branches_tab, "الفروع")
-        
-        layout.addWidget(self.management_tab_widget)
         widget.setLayout(layout)
         
         # Load initial data
@@ -924,61 +891,6 @@ class MainWindow(QMainWindow):
         widget.setLayout(layout)
         return widget
     
-    def create_branches_management_tab(self):
-        """Create branches management tab"""
-        widget = QWidget()
-        layout = QVBoxLayout()
-        
-        # Buttons layout
-        buttons_layout = QHBoxLayout()
-        
-        self.add_branch_btn = QPushButton("إضافة فرع جديد")
-        self.add_branch_btn.setStyleSheet(self.get_management_button_style("#27ae60"))
-        self.add_branch_btn.clicked.connect(self.add_branch)
-        
-        self.edit_branch_btn = QPushButton("تعديل الفرع")
-        self.edit_branch_btn.setStyleSheet(self.get_management_button_style("#3498db"))
-        self.edit_branch_btn.clicked.connect(self.edit_branch)
-        
-        self.delete_branch_btn = QPushButton("حذف الفرع")
-        self.delete_branch_btn.setStyleSheet(self.get_management_button_style("#e74c3c"))
-        self.delete_branch_btn.clicked.connect(self.delete_branch)
-        
-        self.refresh_branches_btn = QPushButton("تحديث")
-        self.refresh_branches_btn.setStyleSheet(self.get_management_button_style("#f39c12"))
-        self.refresh_branches_btn.clicked.connect(self.load_branches_data)
-        
-        buttons_layout.addWidget(self.add_branch_btn)
-        buttons_layout.addWidget(self.edit_branch_btn)
-        buttons_layout.addWidget(self.delete_branch_btn)
-        buttons_layout.addWidget(self.refresh_branches_btn)
-        buttons_layout.addStretch()
-        
-        layout.addLayout(buttons_layout)
-        
-        # Branches table
-        self.branches_table = QTableWidget()
-        self.branches_table.setColumnCount(6)
-        self.branches_table.setHorizontalHeaderLabels([
-            "اسم الفرع", "كود الفرع", "المدير", "الهاتف", "تاريخ الافتتاح", "تاريخ الإضافة"
-        ])
-        
-        # Table styling
-        self.branches_table.setStyleSheet(self.get_management_table_style())
-        self.branches_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.branches_table.setAlternatingRowColors(True)
-        
-        # Auto resize columns
-        header = self.branches_table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-        
-        # Double click to edit
-        self.branches_table.doubleClicked.connect(self.edit_branch)
-        
-        layout.addWidget(self.branches_table)
-        widget.setLayout(layout)
-        return widget
-    
     def get_management_button_style(self, color):
         """Get button style for management buttons"""
         return f"""
@@ -1031,9 +943,8 @@ class MainWindow(QMainWindow):
         return f"#{darkened[0]:02x}{darkened[1]:02x}{darkened[2]:02x}"
     
     def load_management_data(self):
-        """Load both suppliers and branches data"""
+        """Load suppliers data"""
         self.load_suppliers_data()
-        self.load_branches_data()
     
     def load_suppliers_data(self):
         """Load suppliers data into table"""
@@ -1057,35 +968,6 @@ class MainWindow(QMainWindow):
             
             # Store supplier data in the first item for easy access
             self.suppliers_table.item(row, 0).setData(Qt.UserRole, supplier)
-    
-    def load_branches_data(self):
-        """Load branches data into table"""
-        from models.branch import Branch
-        branches = Branch.get_all_branches()
-        self.branches_table.setRowCount(len(branches))
-        
-        for row, branch in enumerate(branches):
-            self.branches_table.setItem(row, 0, QTableWidgetItem(branch['branch_name']))
-            self.branches_table.setItem(row, 1, QTableWidgetItem(branch['branch_code'] or ''))
-            self.branches_table.setItem(row, 2, QTableWidgetItem(branch['manager_name'] or ''))
-            self.branches_table.setItem(row, 3, QTableWidgetItem(branch['phone'] or ''))
-            
-            opening_date = branch['opening_date']
-            if opening_date:
-                date_str = opening_date.strftime('%Y-%m-%d') if hasattr(opening_date, 'strftime') else str(opening_date)
-                self.branches_table.setItem(row, 4, QTableWidgetItem(date_str))
-            else:
-                self.branches_table.setItem(row, 4, QTableWidgetItem(''))
-            
-            date_added = branch['date_added']
-            if date_added:
-                date_str = date_added.strftime('%Y-%m-%d') if hasattr(date_added, 'strftime') else str(date_added)
-                self.branches_table.setItem(row, 5, QTableWidgetItem(date_str))
-            else:
-                self.branches_table.setItem(row, 5, QTableWidgetItem(''))
-            
-            # Store branch data in the first item for easy access
-            self.branches_table.item(row, 0).setData(Qt.UserRole, branch)
     
     def add_supplier(self):
         """Add new supplier"""
@@ -1128,49 +1010,6 @@ class MainWindow(QMainWindow):
                 self.load_suppliers_data()
             else:
                 QMessageBox.critical(self, "خطأ", "فشل في حذف المورد")
-    
-    def add_branch(self):
-        """Add new branch"""
-        from branch_dialog import BranchDialog
-        dialog = BranchDialog(self)
-        if dialog.exec() == QDialog.Accepted:
-            self.load_branches_data()
-    
-    def edit_branch(self):
-        """Edit selected branch"""
-        current_row = self.branches_table.currentRow()
-        if current_row < 0:
-            QMessageBox.warning(self, "تحذير", "يرجى اختيار فرع للتعديل")
-            return
-        
-        branch_data = self.branches_table.item(current_row, 0).data(Qt.UserRole)
-        from branch_dialog import BranchDialog
-        dialog = BranchDialog(self, branch_data)
-        if dialog.exec() == QDialog.Accepted:
-            self.load_branches_data()
-    
-    def delete_branch(self):
-        """Delete selected branch"""
-        current_row = self.branches_table.currentRow()
-        if current_row < 0:
-            QMessageBox.warning(self, "تحذير", "يرجى اختيار فرع للحذف")
-            return
-        
-        branch_data = self.branches_table.item(current_row, 0).data(Qt.UserRole)
-        branch_name = branch_data['branch_name']
-        
-        reply = QMessageBox.question(self, "تأكيد الحذف", 
-                                   f"هل أنت متأكد من حذف الفرع '{branch_name}'؟",
-                                   QMessageBox.Yes | QMessageBox.No)
-        
-        if reply == QMessageBox.Yes:
-            from models.branch import Branch
-            if Branch.delete_branch(branch_data['id']):
-                QMessageBox.information(self, "نجح", "تم حذف الفرع بنجاح")
-                self.load_branches_data()
-            else:
-                QMessageBox.critical(self, "خطأ", "فشل في حذف الفرع")
-    
     
     def open_management_window(self):
         """This method is no longer needed as management is now integrated in tabs"""
