@@ -15,7 +15,7 @@ from ui.extract_item import ExtractItemWidget
 from ui.stock_view import StockViewWidget
 from ui.invoice_view import InvoiceViewWidget
 from models.extraction import Extraction
-from ui.settings import SettingsWidget
+from ui.settings import PrinterSettingsWidget
 from ui.pizza_main import PizzaMainWidget
 from ui.suppliers import SuppliersWidget
 from models.settings import Settings
@@ -202,7 +202,7 @@ class MainWindow(QMainWindow):
         self.invoice_view_widget = InvoiceViewWidget()
         self.pizza_main_widget = PizzaMainWidget()
         self.suppliers_widget = SuppliersWidget()
-        self.settings_widget = SettingsWidget(self.user_data)
+        self.settings_widget = PrinterSettingsWidget(self.user_data)
         
         # Create management widget wrapper
         self.management_widget = self.create_management_widget()
@@ -220,7 +220,7 @@ class MainWindow(QMainWindow):
         self.tab_widget.addTab(self.suppliers_widget, "الموردين")  # Suppliers
         self.tab_widget.addTab(self.management_widget, "إدارة الموردين والفروع")  # Management
         self.tab_widget.addTab(self.add_item_widget, "إضافة منتجات")  # Settings
-        self.tab_widget.addTab(self.settings_widget, "إعدادات")  # Logout
+        self.tab_widget.addTab(self.settings_widget, "إعدادات الطابعة")  # Printer Settings
         
         # Add tab widget to main layout
         main_layout.addWidget(self.tab_widget)
@@ -469,8 +469,8 @@ class MainWindow(QMainWindow):
             self.load_management_data()
         elif index == 6:  # Add Items
             pass  # No refresh needed for add items
-        elif index == 7:  # Settings
-            pass  # Settings widget handles its own refresh
+        elif index == 7:  # Printer Settings
+            pass  # Printer settings widget handles its own refresh
     
     def create_history_widget(self):
         """Create the history operations widget"""
