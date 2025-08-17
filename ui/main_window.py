@@ -1011,6 +1011,49 @@ class MainWindow(QMainWindow):
             else:
                 QMessageBox.critical(self, "خطأ", "فشل في حذف المورد")
     
+    def add_branch(self):
+        """Add new branch"""
+        from branch_dialog import BranchDialog
+        dialog = BranchDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            self.load_branches_data()
+    
+    def edit_branch(self):
+        """Edit selected branch"""
+        current_row = self.branches_table.currentRow()
+        if current_row < 0:
+            QMessageBox.warning(self, "تحذير", "يرجى اختيار فرع للتعديل")
+            return
+        
+        branch_data = self.branches_table.item(current_row, 0).data(Qt.UserRole)
+        from branch_dialog import BranchDialog
+        dialog = BranchDialog(self, branch_data)
+        if dialog.exec() == QDialog.Accepted:
+            self.load_branches_data()
+    
+    def delete_branch(self):
+        """Delete selected branch"""
+        current_row = self.branches_table.currentRow()
+        if current_row < 0:
+            QMessageBox.warning(self, "تحذير", "يرجى اختيار فرع للحذف")
+            return
+        
+        branch_data = self.branches_table.item(current_row, 0).data(Qt.UserRole)
+        branch_name = branch_data['branch_name']
+        
+        reply = QMessageBox.question(self, "تأكيد الحذف", 
+                                   f"هل أنت متأكد من حذف الفرع '{branch_name}'؟",
+                                   QMessageBox.Yes | QMessageBox.No)
+        
+        if reply == QMessageBox.Yes:
+            from models.branch import Branch
+            if Branch.delete_branch(branch_data['id']):
+                QMessageBox.information(self, "نجح", "تم حذف الفرع بنجاح")
+                self.load_branches_data()
+            else:
+                QMessageBox.critical(self, "خطأ", "فشل في حذف الفرع")
+    
+    
     def open_management_window(self):
         """This method is no longer needed as management is now integrated in tabs"""
         # This method is kept for compatibility but does nothing

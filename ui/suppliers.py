@@ -847,7 +847,7 @@ class SuppliersWidget(QWidget):
         self.branch_table = QTableWidget()
         self.branch_table.setColumnCount(7)
         self.branch_table.setHorizontalHeaderLabels([
-            "رقم الفاتورة", "اسم الصنف", "الوحدة", "الكمية المستخرجة", "تاريخ الاستخراج", "المورد", "ملاحظات"
+            "رقم الفاتورة", "اسم الصنف", "الوحدة", "الكمية المستخرجة", "تاريخ الاستخراج", "المورد", "مستخرج بواسطة"
         ])
         
         # Style the branch table
@@ -1323,8 +1323,8 @@ class SuppliersWidget(QWidget):
             
             # Get extraction data for the selected branch using branch_id
             cursor.execute("""
-                SELECT i.invoice_number, i.item_name, 'قطعة' as unit, e.quantity_extracted, 
-                       e.date_extracted, i.supplier_name, 'لا توجد ملاحظات' as notes
+                SELECT i.invoice_number, i.item_name, i.quantity_type as unit, e.quantity_extracted, 
+                       e.date_extracted, i.supplier_name, e.extracted_by as notes
                 FROM extractions e
                 JOIN items i ON e.item_id = i.id
                 WHERE e.branch_id = ?
