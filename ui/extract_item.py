@@ -144,7 +144,7 @@ class ExtractItemWidget(QWidget):
                 allocated = sum(item_data['quantity'] for item_data in self.items_to_extract 
                               if item_data['item_id'] == item_id)
                 available = item.quantity - allocated
-                self.available_label.setText(f"متاح: {available}")
+                self.available_label.setText(f"متاح: {available} {item.quantity_type}")
                 self.quantity.setMaximum(max(1, available))
                 break
     
