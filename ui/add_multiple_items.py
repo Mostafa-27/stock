@@ -80,7 +80,7 @@ class AddMultipleItemsWidget(QWidget):
         # Quantity type dropdown
         self.quantity_type = QComboBox()
         self.quantity_type.addItems(['وحدة', 'كيلو', 'لتر', 'جرام', 'متر', 'صندوق', 'قطعة', 'طن'])
-        self.quantity_type.setEditable(True)  # Allow custom types
+        self.quantity_type.setEditable(False)  # Only allow predefined types
         
         self.price = QDoubleSpinBox()
         self.price.setMinimum(0.01)
