@@ -433,6 +433,7 @@ class InvoiceDetailsDialog(QDialog):
         header.setSectionResizeMode(QHeaderView.Stretch)
         self.items_table.setAlternatingRowColors(True)
         self.items_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.items_table.setEditTriggers(QTableWidget.NoEditTriggers)
         
         layout.addWidget(self.items_table)
         
@@ -578,6 +579,7 @@ class InvoiceViewWidget(QWidget):
         
         self.invoice_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.invoice_table.setAlternatingRowColors(True)
+        self.invoice_table.setEditTriggers(QTableWidget.NoEditTriggers)
         
         # Set default row height to make rows taller
         self.invoice_table.verticalHeader().setDefaultSectionSize(40)

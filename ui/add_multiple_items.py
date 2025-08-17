@@ -102,6 +102,7 @@ class AddMultipleItemsWidget(QWidget):
         
         self.items_table = QTableWidget()
         self.items_table.setColumnCount(5)
+        self.items_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.items_table.setHorizontalHeaderLabels(['اسم المنتج', 'الكمية', 'النوع', 'السعر/الوحدة', 'الإجمالي'])
         self.items_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         

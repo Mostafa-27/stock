@@ -540,6 +540,7 @@ class SuppliersWidget(QWidget):
         self.invoices_table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
         self.invoices_table.verticalHeader().setDefaultSectionSize(35)  # Row height
         self.invoices_table.setMaximumHeight(600)  # Maximum height to prevent excessive growth
+        self.invoices_table.setEditTriggers(QTableWidget.NoEditTriggers)
         
 
         
@@ -846,6 +847,7 @@ class SuppliersWidget(QWidget):
         
         self.branch_table = QTableWidget()
         self.branch_table.setColumnCount(7)
+        self.branch_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.branch_table.setHorizontalHeaderLabels([
             "رقم الفاتورة", "اسم الصنف", "الوحدة", "الكمية المستخرجة", "تاريخ الاستخراج", "المورد", "مستخرج بواسطة"
         ])
@@ -1224,6 +1226,7 @@ class SuppliersWidget(QWidget):
         # Create table
         table = QTableWidget()
         table.setColumnCount(6)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setHorizontalHeaderLabels([
             "اسم الفرع", "كود الفرع", "مدير الفرع", "إجمالي الاستخراجات", "إجمالي الكمية", "عدد الأصناف المختلفة"
         ])

@@ -72,6 +72,7 @@ class ExtractItemWidget(QWidget):
         self.items_table.setColumnCount(4)
         self.items_table.setHorizontalHeaderLabels(['اسم المنتج', 'المخزون الحالي', 'الكمية للاستخراج', 'المتبقي'])
         self.items_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.items_table.setEditTriggers(QTableWidget.NoEditTriggers)
         
         # Table buttons
         table_buttons_layout = QHBoxLayout()

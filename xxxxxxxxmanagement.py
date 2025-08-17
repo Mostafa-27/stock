@@ -93,13 +93,14 @@ class SuppliersManagementWindow(QMainWindow):
         self.suppliers_table.setStyleSheet(self.get_table_style())
         self.suppliers_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.suppliers_table.setAlternatingRowColors(True)
+        self.suppliers_table.setEditTriggers(QTableWidget.NoEditTriggers)
         
         # Auto resize columns
         header = self.suppliers_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
         
         # Double click to edit
-        self.suppliers_table.doubleClicked.connect(self.edit_supplier)
+        # self.suppliers_table.doubleClicked.connect(self.edit_supplier)
         
         layout.addWidget(self.suppliers_table)
         widget.setLayout(layout)

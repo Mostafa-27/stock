@@ -16,13 +16,13 @@ from ui.stock_view import StockViewWidget
 from ui.invoice_view import InvoiceViewWidget
 from models.extraction import Extraction
 from ui.settings import PrinterSettingsWidget
-from ui.pizza_main import PizzaMainWidget
+# from ui.zzzpizza_main import PizzaMainWidget
 from ui.suppliers import SuppliersWidget
 from models.settings import Settings
 from utils.printer_utils import print_invoice, show_print_dialog
 from models.invoice import Invoice
 from database import get_db_connection
-from management import SuppliersManagementWindow
+ 
 
 class MainWindow(QMainWindow):
     def __init__(self, user_data=None):
@@ -200,7 +200,7 @@ class MainWindow(QMainWindow):
         self.extract_item_widget = ExtractItemWidget()
         self.stock_view_widget = StockViewWidget()
         self.invoice_view_widget = InvoiceViewWidget()
-        self.pizza_main_widget = PizzaMainWidget()
+        # self.pizza_main_widget = PizzaMainWidget()
         self.suppliers_widget = SuppliersWidget()
         self.settings_widget = PrinterSettingsWidget(self.user_data)
         
@@ -877,6 +877,7 @@ class MainWindow(QMainWindow):
         
         # Table styling
         self.suppliers_table.setStyleSheet(self.get_management_table_style())
+        self.suppliers_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.suppliers_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.suppliers_table.setAlternatingRowColors(True)
         

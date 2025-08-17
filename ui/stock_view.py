@@ -45,6 +45,7 @@ class StockViewWidget(QWidget):
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels(["رقم", "اسم المنتج", "الكمية", "نوع الوحدة", "السعر لكل وحدة", "رقم الفاتورة", "تاريخ الإضافة"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         
         # Add widgets to layout
         layout.addLayout(filter_layout)
